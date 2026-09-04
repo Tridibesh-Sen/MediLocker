@@ -1,0 +1,79 @@
+# ==============================
+# MediLocker - Global Gitignore
+# ==============================
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+out/
+.next/
+.nuxt/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Python packaging
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+
+# Database / local development
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets / credentials
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Frontend environment files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Backend environment files
+backend/.env
+backend/.env.*
+!backend/.env.example
