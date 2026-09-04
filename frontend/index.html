@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MediLocker — Your health story, in one place.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+<a class="brand" href="index.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
+<nav class="nav-links"><a href="#features" data-i18n="navFeatures">Features</a><a href="#portals" data-i18n="navPortals">Access portals</a></nav>
+<div class="header-actions"><button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button><select id="languageSelect"><option value="en">English</option><option value="bn">বাংলা</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option><option value="ur">اردو</option><option value="pa">ਪੰਜਾਬੀ</option><option value="kn">ಕನ್ನಡ</option></select><a class="signin" href="login.html" data-i18n="signIn">Sign in ↗</a></div>
+</header>
+<main>
+<section class="hero">
+<div class="hero-copy"><div class="eyebrow"><span class="eyebrow-dot"></span><span data-i18n="eyebrow">A calmer way to manage healthcare</span></div>
+<h1><span data-i18n="hero1">Your health story,</span><br><em data-i18n="hero2">in one place.</em></h1>
+<p class="hero-text" data-i18n="heroText">MediLocker brings patient records, prescriptions, reports and medication routines into one beautifully organized digital experience.</p>
+<div class="hero-buttons"><a class="primary-btn" href="login.html?role=patient" data-i18n="enter">Enter MediLocker ↗</a><a class="text-btn" href="#features" data-i18n="seeHow">See how it works ↓</a></div>
+<div class="patient-note"><div class="mini-bubbles"><span>P</span><span>A</span><span>S</span></div><div><strong data-i18n="designed">Designed around the patient</strong><small data-i18n="records">Records stay organized from first visit to follow-up.</small></div></div></div>
+<div class="health-card landing-card"><div class="card-topline"><span>MEDILOCKER WORKSPACE</span><span class="live-dot">● <span data-i18n="secured">secured</span></span></div><h2>Your records, ready when you need them.</h2><div class="workspace-steps"><div class="workspace-step"><span>01</span><div><strong>Create your account</strong><p>Choose Patient, Doctor or Hospital and register with the details for your role.</p></div></div><div class="workspace-step"><span>02</span><div><strong>Get your unique Unit ID</strong><p>Your account receives a unique MediLocker identifier for secure access.</p></div></div><div class="workspace-step"><span>03</span><div><strong>Access the right portal</strong><p>Patients manage records; doctors and hospitals can search authorized patients.</p></div></div></div><div class="landing-card-footer"><span>Patient-first</span><span>Role-based</span><span>Consent-led</span></div></div>
+</section>
+<section class="feature-strip" id="features">
+<article><span>01</span><div><h3 data-i18n="feature1">One medical home</h3><p data-i18n="feature1Text">Prescriptions, reports and history in one organized space.</p></div></article>
+<article><span>02</span><div><h3 data-i18n="feature2">Consent-led access</h3><p data-i18n="feature2Text">Patients stay at the center of who can view their records.</p></div></article>
+<article><span>03</span><div><h3 data-i18n="feature3">Medication to-do</h3><p data-i18n="feature3Text">Turn prescription instructions into a simple daily routine.</p></div></article>
+</section>
+<section class="portals-section" id="portals"><div class="section-heading"><span class="eyebrow" data-i18n="access">ACCESS</span><h2 data-i18n="choosePortal">Choose your care portal.</h2><p data-i18n="portalText">Every role gets a focused experience, while the patient's medical story remains at the center.</p></div>
+<div class="portal-grid"><a class="portal-card patient" href="login.html?role=patient"><span class="portal-icon">♡</span><div><span data-i18n="patient">Patient</span><small data-i18n="manageRecords">Manage your records</small></div><b>↗</b></a>
+<a class="portal-card doctor" href="login.html?role=doctor"><span class="portal-icon">✚</span><div><span data-i18n="doctor">Doctor</span><small data-i18n="accessCare">Access patient care information</small></div><b>↗</b></a>
+<a class="portal-card hospital" href="login.html?role=hospital"><span class="portal-icon">▦</span><div><span data-i18n="hospital">Hospital</span><small data-i18n="managePatients">Manage authorized patient records</small></div><b>↗</b></a></div></section>
+</main>
+<footer><span>© 2026 MediLocker</span><span data-i18n="footer">A digital home for organized healthcare.</span></footer>
+<script src="js/i18n.js"></script><script src="js/main.js"></script>
+</body></html>

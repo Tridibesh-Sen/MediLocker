@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MediLocker — Sign Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="login-page signup-page">
+<header class="site-header"><a class="brand" href="index.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
+<div class="header-actions"><button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button><select id="languageSelect"><option value="en">English</option><option value="bn">বাংলা</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option><option value="ur">اردو</option><option value="pa">ਪੰਜਾਬੀ</option><option value="kn">ಕನ್ನಡ</option></select></div></header>
+
+<main class="login-shell signup-shell">
+<section class="login-intro"><span class="eyebrow">04 / REGISTRATION</span><h1>Create your MediLocker.</h1><p>Choose the account type first. MediLocker uses a different registration form for patients, doctors and hospitals.</p></section>
+<section class="login-card signup-card">
+<div class="role-heading"><span class="eyebrow">ACCOUNT TYPE</span><h2>Who are you registering as?</h2></div>
+<div class="signup-role-grid" id="signupRoleGrid">
+<label class="signup-role selected"><input type="radio" name="role" value="patient" checked><span class="signup-role-icon">♡</span><span><strong>Patient</strong><small>Personal health records</small></span></label>
+<label class="signup-role"><input type="radio" name="role" value="doctor"><span class="signup-role-icon">✚</span><span><strong>Doctor</strong><small>Professional medical access</small></span></label>
+<label class="signup-role"><input type="radio" name="role" value="hospital"><span class="signup-role-icon">▦</span><span><strong>Hospital</strong><small>Institutional care access</small></span></label>
+</div>
+
+<form id="signupForm" novalidate>
+<!-- PATIENT FORM -->
+<div id="patientFields" class="role-fields">
+<div class="signup-section"><div class="section-kicker">PATIENT · IDENTITY</div><h3>Personal details</h3><div class="form-grid">
+<label><span>Full name *</span><input name="patientName" data-required="patient" autocomplete="name"></label>
+<label><span>Email address *</span><input name="patientEmail" type="email" data-required="patient" autocomplete="email"></label>
+<label><span>Phone number *</span><input name="patientPhone" type="tel" data-required="patient" autocomplete="tel"></label>
+<label><span>Date of birth</span><input name="dob" type="date"></label>
+<label><span>Gender</span><select name="gender"><option>Prefer not to say</option><option>Female</option><option>Male</option><option>Other</option></select></label>
+<label><span>Blood group</span><select name="blood"><option>Not specified</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+<label><span>Government ID / Aadhaar</span><input name="govid"></label>
+<label><span>Medical insurance</span><input name="insurance" placeholder="Provider / policy details"></label>
+</div></div>
+<div class="signup-section"><div class="section-kicker">PATIENT · HEALTH</div><h3>Health information</h3><div class="form-grid">
+<label class="wide"><span>Allergies, if any</span><textarea name="allergy" rows="3" placeholder="Drug, food or other allergies"></textarea></label>
+<label class="wide"><span>Current medications, if any</span><textarea name="medications" rows="3" placeholder="Medicine name, dosage and frequency"></textarea></label>
+<label class="wide"><span>Existing medical conditions / history</span><textarea name="history" rows="3"></textarea></label>
+<label><span>Emergency contact</span><input name="emergency"></label>
+</div></div>
+<div class="signup-section"><div class="section-kicker">PATIENT · LOCATION</div><h3>Address</h3><div class="form-grid">
+<label class="wide"><span>Address</span><input name="address"></label><label><span>City</span><input name="city"></label><label><span>State</span><input name="state"></label><label><span>PIN code</span><input name="pincode" inputmode="numeric"></label>
+</div></div>
+</div>
+
+<!-- DOCTOR FORM -->
+<div id="doctorFields" class="role-fields hidden">
+<div class="signup-section"><div class="section-kicker">DOCTOR · PROFESSIONAL IDENTITY</div><h3>Doctor details</h3><div class="form-grid">
+<label><span>Doctor's full name *</span><input name="doctorName" data-required="doctor" autocomplete="name"></label>
+<label><span>Professional email *</span><input name="doctorEmail" type="email" data-required="doctor" autocomplete="email"></label>
+<label><span>Professional contact *</span><input name="doctorPhone" type="tel" data-required="doctor" autocomplete="tel"></label>
+<label><span>Doctor ID *</span><input name="doctorId" data-required="doctor" placeholder="Government / institutional ID"></label>
+<label><span>Medical registration number *</span><input name="registrationNumber" data-required="doctor" placeholder="State / National registration no."></label>
+<label><span>Specialization *</span><select name="specialization" data-required="doctor"><option value="">Select specialization</option><option>General Medicine</option><option>Cardiology</option><option>Dermatology</option><option>Neurology</option><option>Pediatrics</option><option>Orthopedics</option><option>Gynecology</option><option>Psychiatry</option><option>Other</option></select></label>
+<label><span>Registration date</span><input name="registrationDate" type="date"></label><label><span>Years of experience</span><input name="experience" type="number" min="0"></label>
+</div></div>
+<div class="signup-section"><div class="section-kicker">DOCTOR · PRACTICE</div><h3>Clinic & verification</h3><div class="form-grid">
+<label><span>Clinic / hospital name *</span><input name="clinicName" data-required="doctor"></label>
+<label><span>Clinic verification reference</span><input name="clinicVerification" placeholder="Verification / license reference"></label>
+<label class="wide"><span>Clinic address *</span><input name="clinicAddress" data-required="doctor"></label>
+<label><span>City *</span><input name="doctorCity" data-required="doctor"></label>
+<label><span>State</span><input name="doctorState"></label>
+<label><span>Verification status</span><select name="doctorVerification"><option>Pending verification</option><option>Verified</option></select></label>
+</div></div>
+</div>
+
+<!-- HOSPITAL FORM -->
+<div id="hospitalFields" class="role-fields hidden">
+<div class="signup-section"><div class="section-kicker">HOSPITAL · INSTITUTIONAL IDENTITY</div><h3>Hospital details</h3><div class="form-grid">
+<label><span>Hospital name *</span><input name="hospitalName" data-required="hospital"></label>
+<label><span>Official email *</span><input name="hospitalEmail" type="email" data-required="hospital" autocomplete="email"></label>
+<label><span>Hospital contact *</span><input name="hospitalPhone" type="tel" data-required="hospital" autocomplete="tel"></label>
+<label><span>Hospital ID *</span><input name="hospitalId" data-required="hospital" placeholder="Institutional hospital ID"></label>
+<label><span>Registration / license number *</span><input name="hospitalLicense" data-required="hospital"></label>
+<label><span>Registration / license date</span><input name="hospitalRegDate" type="date"></label>
+</div></div>
+<div class="signup-section"><div class="section-kicker">HOSPITAL · LOCATION & VERIFICATION</div><h3>Institution information</h3><div class="form-grid">
+<label class="wide"><span>Hospital address *</span><input name="hospitalAddress" data-required="hospital"></label>
+<label><span>City *</span><input name="hospitalCity" data-required="hospital"></label>
+<label><span>State</span><input name="hospitalState"></label>
+<label><span>Hospital type</span><select name="hospitalType"><option>General Hospital</option><option>Specialty Hospital</option><option>Government Hospital</option><option>Private Hospital</option><option>Clinic / Nursing Home</option><option>Other</option></select></label>
+<label><span>Bed capacity</span><input name="beds" type="number" min="0"></label>
+<label><span>Authorized representative</span><input name="representative"></label>
+<label><span>Verification status</span><select name="hospitalVerification"><option>Pending verification</option><option>Verified</option></select></label>
+<label class="wide"><span>Verification / license reference</span><input name="hospitalVerificationRef"></label>
+</div></div>
+</div>
+
+<label class="consent"><input id="signupConsent" type="checkbox" required><span>I confirm that the information provided is accurate. A unique MediLocker Unit ID will be generated for this account.</span></label>
+<button class="primary-btn full" type="submit">Create account & generate Unit ID ↗</button>
+<p class="signup-prompt">Already registered? <a href="login.html">Sign in with Email + Unit ID →</a></p>
+</form></section></main>
+
+<div class="modal hidden" id="unitModal"><div class="modal-card"><button class="modal-close" id="closeUnit" type="button">×</button><div class="success-icon">✓</div><h2>Account created.</h2><p id="unitMessage">Save your Unit ID. It is required together with your registered email for login.</p><div class="generated-id" id="generatedUnit"></div><button class="primary-btn full" id="goLogin" type="button">Continue to login →</button></div></div>
+<script src="js/i18n.js"></script><script src="js/main.js"></script>
+</body></html>
