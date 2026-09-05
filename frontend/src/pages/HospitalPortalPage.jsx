@@ -3,10 +3,10 @@ import { Building2, Bed, Users, ShieldAlert, Plus, CheckCircle2, Search } from '
 
 export default function HospitalPortalPage({ onShowToast }) {
   const [admitForm, setAdmitForm] = useState({
-    patientUnitId: 'ML-842-194-672',
+    patientUnitId: '',
     wardType: 'Emergency ICU',
-    admittingDoctor: 'Dr. Ramesh K. Verma',
-    initialVitals: 'BP 120/80, Pulse 76, SpO2 99%',
+    admittingDoctor: '',
+    initialVitals: '',
   });
   const [admitting, setAdmitting] = useState(false);
 

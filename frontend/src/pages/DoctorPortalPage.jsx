@@ -3,7 +3,7 @@ import { Stethoscope, Search, ShieldCheck, FilePlus, User, CheckCircle2, Clock, 
 import { api } from '../services/api';
 
 export default function DoctorPortalPage({ onShowToast }) {
-  const [patientId, setPatientId] = useState('ML-842-194-672');
+  const [patientId, setPatientId] = useState('');
   const [patientRecord, setPatientRecord] = useState(null);
   const [searching, setSearching] = useState(false);
 

@@ -94,7 +94,7 @@ export default function ProfilePage({ user, onShowToast }) {
                 ABHA Number
               </label>
               <div className="font-mono font-bold text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                {profile?.abhaNumber || '91-4829-1092-4820'}
+                {profile?.abhaNumber || 'Not Linked'}
               </div>
             </div>
             <div>

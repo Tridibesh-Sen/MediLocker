@@ -33,11 +33,21 @@ export const api = {
 
   // Real Login
   async login({ role, identifier, mpin }) {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, identifier, mpin }),
-    });
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, identifier, mpin }),
+      });
+    } catch (err) {
+      if (err.message && err.message.toLowerCase().includes('failed to fetch')) {
+        throw new Error(
+          `Unable to connect to MediLocker server (${API_BASE}). If deployed, please ensure VITE_API_BASE is set to your backend URL and the server is awake.`
+        );
+      }
+      throw err;
+    }
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -77,11 +87,21 @@ export const api = {
       license: formData.license || `LIC-${Date.now()}`,
     };
 
-    const res = await fetch(`${API_BASE}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      if (err.message && err.message.toLowerCase().includes('failed to fetch')) {
+        throw new Error(
+          `Unable to connect to MediLocker server (${API_BASE}). If deployed, please ensure VITE_API_BASE is set to your backend URL and the server is awake.`
+        );
+      }
+      throw err;
+    }
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {

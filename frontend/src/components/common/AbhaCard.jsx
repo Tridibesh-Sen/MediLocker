@@ -5,7 +5,11 @@ export default function AbhaCard({ user, onShowToast }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText(user?.medilockerId || 'ML-842-194-672');
+    if (!user?.medilockerId) {
+      onShowToast?.({ type: 'error', message: 'No MediLocker ID found.' });
+      return;
+    }
+    navigator.clipboard.writeText(user.medilockerId);
     setCopied(true);
     onShowToast?.({ type: 'success', message: 'MediLocker ID copied to clipboard!' });
     setTimeout(() => setCopied(false), 2000);
@@ -62,12 +66,12 @@ export default function AbhaCard({ user, onShowToast }) {
               </div>
               <div className="pt-2">
                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">ABHA Number</div>
-                <div className="font-mono text-sm font-bold text-slate-800 tracking-wider">{user?.abhaNumber || '91-4829-1092-4820'}</div>
+                <div className="font-mono text-sm font-bold text-slate-800 tracking-wider">{user?.abhaNumber || 'Verified Sovereign Vault'}</div>
               </div>
               <div>
                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">9-Digit MediLocker Unit ID</div>
                 <div className="inline-flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 mt-0.5">
-                  <span className="font-mono font-bold text-sky-800 text-sm">{user?.medilockerId || 'ML-842-194-672'}</span>
+                  <span className="font-mono font-bold text-sky-800 text-sm">{user?.medilockerId || 'Not Assigned'}</span>
                   <button
                     onClick={handleCopyId}
                     className="text-slate-500 hover:text-sky-600 transition"
