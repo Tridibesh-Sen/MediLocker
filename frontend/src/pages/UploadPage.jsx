@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { UploadCloud, FileText, Camera, Sparkles, Plus, Trash2, CheckCircle2, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { UploadCloud, FileText, Camera, Sparkles, Plus, Trash2, CheckCircle2, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function UploadPage({ setCurrentView, onShowToast }) {
-  const [activeMode, setActiveMode] = useState('manual'); // 'manual' or 'ai_upload'
+  const [activeMode, setActiveMode] = useState('manual');
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const [parsedPreview, setParsedPreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Manual Form State
   const [manualForm, setManualForm] = useState({
@@ -32,7 +34,10 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
 
   const handleRemoveMedRow = (idx) => {
     const updated = manualForm.medications.filter((_, i) => i !== idx);
-    setManualForm({ ...manualForm, medications: updated.length ? updated : [{ medicineName: '', dosage: '', frequency: '', timing: '' }] });
+    setManualForm({
+      ...manualForm,
+      medications: updated.length ? updated : [{ medicineName: '', dosage: '', frequency: '', timing: '' }]
+    });
   };
 
   const handleMedChange = (idx, field, val) => {
@@ -43,8 +48,10 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     if (!manualForm.diagnoses.trim()) {
-      onShowToast?.({ type: 'error', message: 'Please enter a diagnosis or clinical reason.' });
+      setError('Please enter a diagnosis or clinical reason.');
       return;
     }
 
@@ -53,7 +60,7 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
       const ddmmyyyy = manualForm.eventDate.split('-').reverse().join('');
       const validMeds = manualForm.medications.filter((m) => m.medicineName.trim());
 
-      const res = await api.createRecord({
+      await api.createRecord({
         category: manualForm.category,
         eventDateDdmmyyyy: ddmmyyyy,
         doctorName: manualForm.doctorName || 'Dr. Not Specified',
@@ -63,57 +70,63 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
         prescribedMedications: validMeds,
       });
 
-      if (res.success) {
-        onShowToast?.({
-          type: 'success',
-          title: 'Record Vaulted',
-          message: 'Clinical record saved and synchronized with ABDM.'
-        });
-        setCurrentView('records');
-      }
+      onShowToast?.({
+        type: 'success',
+        title: 'Record Vaulted',
+        message: 'Clinical record saved directly to your Supabase cloud locker.'
+      });
+      setCurrentView('records');
     } catch (err) {
-      onShowToast?.({ type: 'error', message: 'Failed to vault record.' });
+      setError(err?.message || 'Failed to vault record.');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleSimulateAiUpload = () => {
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
     setUploading(true);
-    setTimeout(() => {
-      setUploading(false);
-      setParsedPreview({
-        category: 'Prescription',
-        doctorName: 'Dr. Neha Kapoor (Pulmonologist)',
-        clinicName: 'Max Healthcare Institute',
-        diagnoses: ['Seasonal Allergic Rhinitis', 'Cough with Bronchospasm'],
-        clinicalSummary: 'Patient presented with dry cough and nasal congestion. Prescribed antihistamine and bronchodilator for 7 days.',
-        prescribedMedications: [
-          { medicineName: 'Levocetirizine 5mg', dosage: '5mg', frequency: '0-0-1', timing: 'At Bedtime' },
-          { medicineName: 'Budesonide Inhaler 200mcg', dosage: '2 puffs', frequency: '1-0-1', timing: 'After Rinsing' }
-        ]
+    setParsedPreview(null);
+
+    try {
+      onShowToast?.({
+        type: 'info',
+        title: 'Processing Document',
+        message: 'Uploading to Supabase Storage & analyzing via Mistral OCR...'
       });
+
+      const res = await api.uploadRecordFile(file, 'PRESCRIPTION', 'Prescription upload');
+      const timeline = res.data?.timelineEvent;
+      const record = res.data?.record;
+
+      setParsedPreview({
+        category: record?.documentType === 'PRESCRIPTION' ? 'Prescription' : 'Medical Report',
+        doctorName: timeline?.doctorName || 'Dr. Self-Entered',
+        clinicName: timeline?.clinicName || 'Medical Center',
+        diagnoses: timeline?.diagnoses || ['Document Processed'],
+        clinicalSummary: timeline?.clinicalSummary || 'Extraction completed via Mistral OCR.',
+        prescribedMedications: (timeline?.prescribedMeds || []).map((m) => ({
+          medicineName: m.medicineName,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          timing: m.timingInstruction,
+        })),
+        url: record?.url,
+      });
+
       onShowToast?.({
         type: 'success',
         title: 'Medi-AI Extraction Complete',
-        message: 'Review extracted entities below and click "Confirm & Vault Record".'
+        message: 'Record successfully vaulted and stored in Supabase!'
       });
-    }, 1200);
-  };
-
-  const handleConfirmAiParsed = async () => {
-    if (!parsedPreview) return;
-    setUploading(true);
-    try {
-      await api.createRecord(parsedPreview);
-      onShowToast?.({
-        type: 'success',
-        title: 'Record Vaulted',
-        message: 'AI parsed record successfully added to your health vault.'
-      });
-      setCurrentView('records');
+    } catch (err) {
+      setError(err?.message || 'Failed to process document with Mistral OCR.');
     } finally {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -125,14 +138,21 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
           Ingest & Vault Medical Records
         </h1>
         <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-          Choose between automated Medi-AI OCR ingestion or complete manual structured form submission.
+          Real multimodal Mistral OCR ingestion and structured manual form submission saved directly to Supabase.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Mode Selector Tabs */}
       <div className="flex bg-slate-200/80 p-1.5 rounded-2xl text-xs font-bold text-slate-700">
         <button
-          onClick={() => setActiveMode('manual')}
+          onClick={() => { setActiveMode('manual'); setError(''); }}
           className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-2 ${
             activeMode === 'manual' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
           }`}
@@ -141,13 +161,13 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
           <span>Manual Form Entry</span>
         </button>
         <button
-          onClick={() => setActiveMode('ai_upload')}
+          onClick={() => { setActiveMode('ai_upload'); setError(''); }}
           className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-2 ${
             activeMode === 'ai_upload' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
           }`}
         >
           <Sparkles className="w-4 h-4 text-amber-500" />
-          <span>Medi-AI OCR Document Ingest</span>
+          <span>Mistral OCR Document Ingest</span>
         </button>
       </div>
 
@@ -261,7 +281,7 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider text-[10px]">
-                  Prescribed Medications (Optional)
+                  Prescribed Medications
                 </label>
                 <button
                   type="button"
@@ -338,7 +358,7 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
                 className="w-full sm:w-auto px-8 py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {uploading ? (
-                  <span>Saving to Vault...</span>
+                  <span>Saving to Supabase...</span>
                 ) : (
                   <>
                     <span>Submit & Vault Record</span>
@@ -351,51 +371,60 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
         </div>
       )}
 
-      {/* Mode 2: AI Multimodal OCR Upload */}
+      {/* Mode 2: Real AI Multimodal OCR Upload */}
       {activeMode === 'ai_upload' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl border-2 border-dashed border-sky-300 hover:border-sky-500 p-8 text-center space-y-4 transition cursor-pointer">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*,application/pdf"
+            className="hidden"
+          />
+
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-white rounded-3xl border-2 border-dashed border-sky-300 hover:border-sky-500 p-8 text-center space-y-4 transition cursor-pointer"
+          >
             <div className="w-16 h-16 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto shadow-inner">
               <UploadCloud className="w-8 h-8" />
             </div>
             <div>
               <h3 className="font-display font-bold text-lg text-slate-900">Upload Prescription Photo or PDF</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                Drag and drop your file here, or browse from device. Supports JPG, PNG, WEBP, and PDF.
+                Click to browse file from device. Uploads to Supabase Cloud Storage and extracts with Mistral OCR.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={handleSimulateAiUpload}
                 disabled={uploading}
                 className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl shadow transition disabled:opacity-50"
               >
-                {uploading ? 'Processing with Mistral OCR...' : 'Select File & Parse with Medi-AI'}
+                {uploading ? 'Processing with Mistral OCR...' : 'Choose File & Run Mistral OCR'}
               </button>
               <button
                 type="button"
-                onClick={handleSimulateAiUpload}
                 disabled={uploading}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
               >
                 <Camera className="w-4 h-4 text-sky-600" />
-                <span>Scan Blister Foil / Strip</span>
+                <span>Camera Snap / Photo</span>
               </button>
             </div>
           </div>
 
-          {/* AI Extracted Preview Card */}
+          {/* Real Extracted Preview Card */}
           {parsedPreview && (
             <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-4 animate-in fade-in">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
                   <CheckCircle2 className="w-5 h-5" />
-                  <span>Entities Extracted by Medi-AI</span>
+                  <span>Entities Extracted by Mistral OCR</span>
                 </div>
-                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-200">
-                  Ready to Vault
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  Vaulted in Supabase
                 </span>
               </div>
 
@@ -405,31 +434,21 @@ export default function UploadPage({ setCurrentView, onShowToast }) {
                   <strong className="text-slate-800">{parsedPreview.diagnoses.join(', ')}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Doctor / Clinic</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Doctor / Facility</span>
                   <strong className="text-slate-800">{parsedPreview.doctorName} ({parsedPreview.clinicName})</strong>
                 </div>
               </div>
 
-              {parsedPreview.prescribedMedications?.length > 0 && (
-                <div className="space-y-1.5 text-xs">
-                  <div className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Detected Medications</div>
-                  <div className="space-y-1">
-                    {parsedPreview.prescribedMedications.map((m, i) => (
-                      <div key={i} className="p-2.5 bg-slate-50 rounded-lg flex items-center justify-between border border-slate-200">
-                        <span className="font-bold text-slate-800">{m.medicineName}</span>
-                        <span className="font-mono text-sky-700 text-xs">{m.dosage} · {m.frequency} ({m.timing})</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="text-xs bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-700">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Clinical Summary</span>
+                {parsedPreview.clinicalSummary}
+              </div>
 
               <button
-                onClick={handleConfirmAiParsed}
-                disabled={uploading}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2"
+                onClick={() => setCurrentView('records')}
+                className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2"
               >
-                <span>Confirm & Vault Record in MediLocker</span>
+                <span>View All Vaulted Records</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { ShieldCheck, User, Stethoscope, Building2, Lock, KeyRound, Fingerprint, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, User, Stethoscope, Building2, Lock, ArrowRight, Fingerprint } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast }) {
   const [role, setRole] = useState('patient');
-  const [identifier, setIdentifier] = useState('ML-842-194-672');
-  const [mpin, setMpin] = useState(['1', '2', '3', '4', '5', '6']);
+  const [identifier, setIdentifier] = useState('');
+  const [mpin, setMpin] = useState(['', '', '', '', '', '']);
   const [authMethod, setAuthMethod] = useState('mpin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,19 +21,6 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
       const nextInput = document.getElementById(`mpin-${index + 1}`);
       nextInput?.focus();
     }
-  };
-
-  const handleQuickDemo = (selectedRole) => {
-    setRole(selectedRole);
-    if (selectedRole === 'doctor') {
-      setIdentifier('DOC-912-384');
-    } else if (selectedRole === 'hospital') {
-      setIdentifier('HOSP-441-209');
-    } else {
-      setIdentifier('ML-842-194-672');
-    }
-    setMpin(['1', '2', '3', '4', '5', '6']);
-    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -66,11 +53,9 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
           message: `Welcome back, ${res.user.name || 'User'}!`
         });
         onLoginSuccess(res.user);
-      } else {
-        setError(res.error || 'Invalid credentials.');
       }
     } catch (err) {
-      setError('An error occurred during authentication.');
+      setError(err?.message || 'Invalid credentials.');
     } finally {
       setLoading(false);
     }
@@ -92,7 +77,7 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
         <div className="grid grid-cols-3 border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
           <button
             type="button"
-            onClick={() => handleQuickDemo('patient')}
+            onClick={() => { setRole('patient'); setError(''); }}
             className={`py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b-2 transition ${
               role === 'patient' ? 'border-sky-600 text-sky-700 bg-white' : 'border-transparent hover:bg-slate-100'
             }`}
@@ -102,7 +87,7 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
           </button>
           <button
             type="button"
-            onClick={() => handleQuickDemo('doctor')}
+            onClick={() => { setRole('doctor'); setError(''); }}
             className={`py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b-2 transition ${
               role === 'doctor' ? 'border-sky-600 text-sky-700 bg-white' : 'border-transparent hover:bg-slate-100'
             }`}
@@ -112,7 +97,7 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
           </button>
           <button
             type="button"
-            onClick={() => handleQuickDemo('hospital')}
+            onClick={() => { setRole('hospital'); setError(''); }}
             className={`py-3 flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b-2 transition ${
               role === 'hospital' ? 'border-sky-600 text-sky-700 bg-white' : 'border-transparent hover:bg-slate-100'
             }`}
@@ -133,14 +118,14 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
           {/* Identifier Input */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              {role === 'patient' ? '9-Digit Unit ID or ABHA Number' : role === 'doctor' ? 'Doctor ID / Email' : 'Hospital Registration ID'}
+              {role === 'patient' ? '9-Digit Unit ID or Email' : role === 'doctor' ? 'Doctor ID or Email' : 'Hospital ID or Email'}
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={role === 'patient' ? 'e.g. ML-842-194-672' : 'e.g. DOC-912-384'}
+                placeholder={role === 'patient' ? 'e.g. ML-842-194-672 or patient@email.com' : 'e.g. DOC-912-384 or doctor@email.com'}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
                 required
               />
@@ -172,16 +157,7 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
           {/* MPIN Input Boxes */}
           {authMethod === 'mpin' ? (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <label className="font-bold text-slate-700 uppercase tracking-wider">Enter 6-Digit MPIN</label>
-                <button
-                  type="button"
-                  onClick={() => setMpin(['1', '2', '3', '4', '5', '6'])}
-                  className="text-sky-600 hover:underline font-bold text-[11px]"
-                >
-                  Autofill Demo (123456)
-                </button>
-              </div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider text-xs">Enter 6-Digit MPIN</label>
               <div className="flex justify-between gap-2">
                 {mpin.map((digit, idx) => (
                   <input
@@ -200,7 +176,7 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
             <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl text-center space-y-2">
               <Fingerprint className="w-8 h-8 text-sky-600 mx-auto animate-pulse" />
               <div className="text-xs font-bold text-sky-900">WebAuthn Sovereign Passkey</div>
-              <p className="text-[11px] text-sky-700">Authenticate instantly with Windows Hello, Face ID, or your physical security key.</p>
+              <p className="text-[11px] text-sky-700">Authenticate securely with Windows Hello, Touch ID, or security key.</p>
             </div>
           )}
 
@@ -219,34 +195,6 @@ export default function LoginPage({ onLoginSuccess, setCurrentView, onShowToast 
               </>
             )}
           </button>
-
-          {/* Quick Demo Pre-fill Pills */}
-          <div className="pt-2 border-t border-slate-100 text-center">
-            <span className="text-[11px] text-slate-400 font-semibold block mb-2">QUICK DEMO ROLES (1-CLICK)</span>
-            <div className="flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('patient')}
-                className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-              >
-                Patient
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('doctor')}
-                className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-              >
-                Doctor
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('hospital')}
-                className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-              >
-                Hospital
-              </button>
-            </div>
-          </div>
 
           <div className="text-center text-xs text-slate-500 pt-2">
             Don't have an account?{' '}

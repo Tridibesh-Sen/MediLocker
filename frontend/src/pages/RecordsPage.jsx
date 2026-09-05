@@ -34,7 +34,7 @@ export default function RecordsPage({ setCurrentView, onShowToast }) {
     return matchesCat && matchesSearch;
   });
 
-  const handleShareSubmit = (e) => {
+  const handleShareSubmit = async (e) => {
     e.preventDefault();
     if (!shareFormData.doctorUnitId.trim()) {
       onShowToast?.({ type: 'error', message: 'Please enter a valid Doctor or Hospital Unit ID.' });
@@ -42,16 +42,20 @@ export default function RecordsPage({ setCurrentView, onShowToast }) {
     }
 
     setSharing(true);
-    setTimeout(() => {
-      setSharing(false);
+    try {
+      await api.grantConsent(shareFormData);
       setShareModalOpen(false);
       onShowToast?.({
         type: 'success',
         title: 'Consent Granted',
-        message: `15-minute emergency read-only consent issued to ${shareFormData.doctorUnitId}.`
+        message: `${shareFormData.duration} sovereign access token issued to ${shareFormData.doctorUnitId}.`
       });
       setShareFormData({ doctorUnitId: '', duration: '15min', purpose: 'Clinical Consultation' });
-    }, 600);
+    } catch (err) {
+      onShowToast?.({ type: 'error', message: 'Failed to issue consent token.' });
+    } finally {
+      setSharing(false);
+    }
   };
 
   const categories = ['All', 'Prescription', 'Lab Report', 'Vaccine Certificate', 'Discharge Summary'];

@@ -10,47 +10,37 @@ export default function HospitalPortalPage({ onShowToast }) {
   });
   const [admitting, setAdmitting] = useState(false);
 
-  const [activeAdmissions, setActiveAdmissions] = useState([
-    {
-      id: 'adm-01',
-      patientName: 'Ananya Sharma',
-      unitId: 'ML-842-194-672',
-      ward: 'ICU Bed 04',
-      admittedAt: 'Today, 10:15 AM',
-      status: 'Admitted & Monitored'
-    },
-    {
-      id: 'adm-02',
-      patientName: 'Vikram Mehta',
-      unitId: 'ML-392-108-554',
-      ward: 'General Ward Bed 12',
-      admittedAt: 'Yesterday, 04:30 PM',
-      status: 'Stable'
-    }
-  ]);
+  const [activeAdmissions, setActiveAdmissions] = useState([]);
 
-  const handleAdmitSubmit = (e) => {
+  const handleAdmitSubmit = async (e) => {
     e.preventDefault();
     if (!admitForm.patientUnitId.trim()) return;
 
     setAdmitting(true);
-    setTimeout(() => {
-      setAdmitting(false);
+    try {
+      const patient = await api.lookupPatient(admitForm.patientUnitId.trim());
       const newAdm = {
         id: 'adm-' + Date.now(),
-        patientName: 'Patient ' + admitForm.patientUnitId.slice(-4),
+        patientName: patient.patientName || ('Patient ' + admitForm.patientUnitId.slice(-4)),
         unitId: admitForm.patientUnitId,
         ward: admitForm.wardType,
         admittedAt: 'Just now',
-        status: 'Admitted'
+        status: 'Admitted & Monitored'
       };
       setActiveAdmissions([newAdm, ...activeAdmissions]);
       onShowToast?.({
         type: 'success',
         title: 'Patient Admitted',
-        message: `Temporary clinical locker access linked for ${admitForm.patientUnitId}.`
+        message: `Temporary clinical locker access linked for ${patient.patientName} (${admitForm.patientUnitId}).`
       });
-    }, 600);
+    } catch (err) {
+      onShowToast?.({
+        type: 'error',
+        message: err.message || 'Unable to locate patient with this Unit ID.'
+      });
+    } finally {
+      setAdmitting(false);
+    }
   };
 
   return (
@@ -181,34 +171,40 @@ export default function HospitalPortalPage({ onShowToast }) {
       {/* Active Admissions Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-4">
         <h3 className="font-display font-bold text-base text-slate-900">Current Inpatient Census</h3>
-        <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-              <tr>
-                <th className="p-3">Patient</th>
-                <th className="p-3">Unit ID</th>
-                <th className="p-3">Ward</th>
-                <th className="p-3">Admitted At</th>
-                <th className="p-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {activeAdmissions.map((adm) => (
-                <tr key={adm.id} className="hover:bg-slate-50">
-                  <td className="p-3 font-bold text-slate-800">{adm.patientName}</td>
-                  <td className="p-3 font-mono text-sky-700 font-bold">{adm.unitId}</td>
-                  <td className="p-3 text-slate-600">{adm.ward}</td>
-                  <td className="p-3 text-slate-500">{adm.admittedAt}</td>
-                  <td className="p-3">
-                    <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                      {adm.status}
-                    </span>
-                  </td>
+        {activeAdmissions.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl">
+            No active admissions recorded today. Admit a patient using their 9-digit Unit ID above.
+          </div>
+        ) : (
+          <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Patient</th>
+                  <th className="p-3">Unit ID</th>
+                  <th className="p-3">Ward</th>
+                  <th className="p-3">Admitted At</th>
+                  <th className="p-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {activeAdmissions.map((adm) => (
+                  <tr key={adm.id} className="hover:bg-slate-50">
+                    <td className="p-3 font-bold text-slate-800">{adm.patientName}</td>
+                    <td className="p-3 font-mono text-sky-700 font-bold">{adm.unitId}</td>
+                    <td className="p-3 text-slate-600">{adm.ward}</td>
+                    <td className="p-3 text-slate-500">{adm.admittedAt}</td>
+                    <td className="p-3">
+                      <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                        {adm.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

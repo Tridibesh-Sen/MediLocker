@@ -37,6 +37,17 @@ export class AuthService {
       collisionCheck = await prisma.user.findUnique({ where: { medilockerId: unitId } }).catch(() => null);
     }
 
+    // Hash MPIN if provided during registration
+    let mpinHash: string | null = null;
+    if (data.mpin) {
+      mpinHash = await argon2.hash(data.mpin, {
+        type: argon2.argon2id,
+        memoryCost: 2 ** 16,
+        timeCost: 3,
+        parallelism: 1,
+      });
+    }
+
     // Create User record
     const user = await prisma.user.create({
       data: {
@@ -44,7 +55,8 @@ export class AuthService {
         email: data.email.toLowerCase(),
         phone: data.phone,
         role: data.role,
-        isVerified: data.role === UserRole.PATIENT, // Doctors/hospitals require verification
+        mpinHash,
+        isVerified: data.role === UserRole.PATIENT,
       },
     });
 
@@ -112,12 +124,35 @@ export class AuthService {
 
     logger.info(`User registered successfully: ${user.medilockerId} (${user.role})`);
 
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        medilockerId: user.medilockerId,
+        email: user.email,
+        role: user.role,
+      },
+      env.JWT_SECRET,
+      { expiresIn: env.JWT_EXPIRES_IN as any }
+    );
+
     return {
-      userId: user.id,
-      medilockerId: user.medilockerId,
-      email: user.email,
-      role: user.role,
-      message: 'Account created successfully. Please configure your 6-digit MPIN or Biometrics.',
+      token,
+      user: {
+        id: user.id,
+        medilockerId: user.medilockerId,
+        email: user.email,
+        name: data.name,
+        role: user.role.toLowerCase(),
+        bloodGroup: data.blood,
+        allergies: data.allergy ? [data.allergy] : [],
+        chronicConditions: data.history ? [data.history] : [],
+        emergencyContact: {
+          name: data.emergency || 'Emergency Contact',
+          phone: data.emergencyPhone || data.phone,
+          relation: 'Family',
+        }
+      },
+      message: 'Account created successfully.',
     };
   }
 
@@ -135,7 +170,7 @@ export class AuthService {
 
     const hashedMpin = await argon2.hash(mpin, {
       type: argon2.argon2id,
-      memoryCost: 2 ** 16, // 64 MB
+      memoryCost: 2 ** 16,
       timeCost: 3,
       parallelism: 1,
     });
@@ -154,13 +189,22 @@ export class AuthService {
   }
 
   /**
-   * Authenticate via Email + Unit ID + MPIN
+   * Authenticate via Email or Unit ID + MPIN
    */
-  static async login(email: string, medilockerId: string, role: UserRole, mpin?: string) {
+  static async login(identifier: string, roleParam: any, mpin?: string) {
+    const cleanId = String(identifier || '').trim();
+    if (!cleanId) {
+      throw new AppError('Email or MediLocker Unit ID is required.', 400);
+    }
+
+    const roleUpper = String(roleParam || 'PATIENT').toUpperCase() as UserRole;
+
     const user = await prisma.user.findFirst({
       where: {
-        email: email.toLowerCase(),
-        medilockerId: medilockerId.toUpperCase(),
+        OR: [
+          { email: cleanId.toLowerCase() },
+          { medilockerId: cleanId.toUpperCase() },
+        ],
       },
       include: {
         patientProfile: true,
@@ -170,10 +214,10 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError('Invalid credentials. Check your email and Unit ID.', 401);
+      throw new AppError('Invalid credentials. Check your email or Unit ID.', 401);
     }
 
-    if (user.role !== role) {
+    if (user.role !== roleUpper) {
       throw new AppError(`This account belongs to the ${user.role} portal. Please select the correct portal.`, 403);
     }
 
@@ -212,7 +256,15 @@ export class AuthService {
         medilockerId: user.medilockerId,
         email: user.email,
         name,
-        role: user.role,
+        role: user.role.toLowerCase(),
+        bloodGroup: user.patientProfile?.bloodGroup || 'O+',
+        allergies: user.patientProfile?.baselineAllergies ? [user.patientProfile.baselineAllergies] : [],
+        chronicConditions: user.patientProfile?.medicalHistory ? [user.patientProfile.medicalHistory] : [],
+        emergencyContact: {
+          name: user.patientProfile?.emergencyContactName || 'Family Member',
+          phone: user.phone,
+          relation: 'Family',
+        },
       },
     };
   }
@@ -396,4 +448,87 @@ export class AuthService {
       },
     };
   }
+
+  /**
+   * Get authenticated user profile
+   */
+  static async getMe(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        patientProfile: true,
+        doctorProfile: true,
+        hospitalProfile: true,
+      },
+    });
+
+    if (!user) throw new AppError('User not found', 404);
+
+    const name =
+      user.patientProfile?.fullName ||
+      user.doctorProfile?.fullName ||
+      user.hospitalProfile?.hospitalName ||
+      'User';
+
+    return {
+      id: user.id,
+      medilockerId: user.medilockerId,
+      email: user.email,
+      name,
+      role: user.role.toLowerCase(),
+      phone: user.phone,
+      bloodGroup: user.patientProfile?.bloodGroup || 'O+',
+      allergies: user.patientProfile?.baselineAllergies
+        ? user.patientProfile.baselineAllergies.split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
+      chronicConditions: user.patientProfile?.chronicConditions || [],
+      emergencyContact: {
+        name: user.patientProfile?.emergencyContactName || '',
+        phone: user.patientProfile?.emergencyContactPhone || user.phone,
+        relation: 'Family',
+      },
+    };
+  }
+
+  /**
+   * Update patient profile baselines and emergency contacts
+   */
+  static async updateProfile(userId: string, data: any) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { patientProfile: true },
+    });
+
+    if (!user) throw new AppError('User not found', 404);
+
+    if (user.role === UserRole.PATIENT) {
+      const allergiesStr = Array.isArray(data.allergies)
+        ? data.allergies.join(', ')
+        : (data.allergies || data.baselineAllergies || '');
+      const chronicList = Array.isArray(data.chronicConditions)
+        ? data.chronicConditions
+        : (data.chronicConditions ? String(data.chronicConditions).split(',').map((s: string) => s.trim()) : []);
+
+      await prisma.patientProfile.upsert({
+        where: { userId },
+        update: {
+          baselineAllergies: allergiesStr,
+          chronicConditions: chronicList,
+          emergencyContactName: data.emergencyContact?.name || data.emergencyContactName,
+          emergencyContactPhone: data.emergencyContact?.phone || data.emergencyContactPhone,
+        },
+        create: {
+          userId,
+          fullName: data.name || user.email.split('@')[0],
+          baselineAllergies: allergiesStr,
+          chronicConditions: chronicList,
+          emergencyContactName: data.emergencyContact?.name || '',
+          emergencyContactPhone: data.emergencyContact?.phone || '',
+        },
+      });
+    }
+
+    return this.getMe(userId);
+  }
 }
+

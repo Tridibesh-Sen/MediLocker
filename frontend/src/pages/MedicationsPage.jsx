@@ -94,73 +94,90 @@ export default function MedicationsPage({ onShowToast }) {
       </div>
 
       {/* Routine Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {medications.map((med) => {
-          const isLowStock = med.remainingCount <= 3;
-          return (
-            <div
-              key={med.id}
-              className={`bg-white rounded-2xl border p-5 shadow-card transition flex flex-col justify-between space-y-4 ${
-                med.takenToday ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 hover:border-sky-300'
-              }`}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                    med.slot === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
-                  }`}>
-                    {med.slot} Slot
-                  </span>
-                  <span className={`text-[11px] font-bold flex items-center gap-1 ${
-                    isLowStock ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200' : 'text-slate-500'
-                  }`}>
-                    {isLowStock && <AlertTriangle className="w-3 h-3" />}
-                    <span>{med.remainingCount} pills left</span>
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="font-display font-bold text-base text-slate-900 leading-snug">{med.name}</h3>
-                  <div className="text-xs text-slate-500 font-mono mt-0.5">{med.activeSalt}</div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Dosage</span>
-                    <strong className="text-slate-700">{med.dosage}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Timing</span>
-                    <strong className="text-slate-700">{med.timing}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <button
-                onClick={() => handleToggle(med.id)}
-                className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                  med.takenToday
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
-                    : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
+      {medications.length === 0 ? (
+        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+          <Pill className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="font-bold text-slate-800 text-base">No active medications scheduled</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            You currently have no prescribed medications or routine pills tracked. Click "Add Medicine to Routine" above or upload a prescription.
+          </p>
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="mt-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl shadow-sm transition inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Medicine</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {medications.map((med) => {
+            const isLowStock = med.remainingCount <= 3;
+            return (
+              <div
+                key={med.id}
+                className={`bg-white rounded-2xl border p-5 shadow-card transition flex flex-col justify-between space-y-4 ${
+                  med.takenToday ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 hover:border-sky-300'
                 }`}
               >
-                {med.takenToday ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                    <span>Dose Completed (Tap to Undo)</span>
-                  </>
-                ) : (
-                  <>
-                    <Clock className="w-4 h-4" />
-                    <span>Mark as Taken Today</span>
-                  </>
-                )}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                      med.slot === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
+                    }`}>
+                      {med.slot} Slot
+                    </span>
+                    <span className={`text-[11px] font-bold flex items-center gap-1 ${
+                      isLowStock ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200' : 'text-slate-500'
+                    }`}>
+                      {isLowStock && <AlertTriangle className="w-3 h-3" />}
+                      <span>{med.remainingCount} pills left</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-display font-bold text-base text-slate-900 leading-snug">{med.name}</h3>
+                    <div className="text-xs text-slate-500 font-mono mt-0.5">{med.activeSalt}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">Dosage</span>
+                      <strong className="text-slate-700">{med.dosage}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">Timing</span>
+                      <strong className="text-slate-700">{med.timing}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <button
+                  onClick={() => handleToggle(med.id)}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                    med.takenToday
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                      : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
+                  }`}
+                >
+                  {med.takenToday ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                      <span>Dose Completed (Tap to Undo)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-4 h-4" />
+                      <span>Mark as Taken Today</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Medication Modal Form */}
       <Modal

@@ -6,6 +6,7 @@ export const patientSignupSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Valid email is required'),
   phone: z.string().min(7, 'Valid phone number is required'),
+  mpin: z.string().regex(/^\d{6}$/, 'MPIN must be 6 digits').optional(),
   dob: z.string().optional(),
   gender: z.string().optional(),
   blood: z.string().optional(),
@@ -26,6 +27,7 @@ export const doctorSignupSchema = z.object({
   name: z.string().min(2, 'Doctor name is required'),
   email: z.string().email('Professional email is required'),
   phone: z.string().min(7, 'Phone number is required'),
+  mpin: z.string().regex(/^\d{6}$/, 'MPIN must be 6 digits').optional(),
   doctorId: z.string().min(1, 'Doctor ID is required'),
   registrationNumber: z.string().min(1, 'Medical registration number is required'),
   specialization: z.string().min(1, 'Specialization is required'),
@@ -44,6 +46,7 @@ export const hospitalSignupSchema = z.object({
   name: z.string().min(2, 'Hospital name is required'),
   email: z.string().email('Official email is required'),
   phone: z.string().min(7, 'Contact number is required'),
+  mpin: z.string().regex(/^\d{6}$/, 'MPIN must be 6 digits').optional(),
   hospitalId: z.string().min(1, 'Hospital ID is required'),
   license: z.string().min(1, 'License number is required'),
   registrationDate: z.string().optional(),
@@ -69,9 +72,10 @@ export const setupMpinSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email('Valid email is required'),
-  medilockerId: z.string().min(1, 'MediLocker ID is required'),
-  role: z.nativeEnum(UserRole),
+  email: z.string().optional(),
+  medilockerId: z.string().optional(),
+  identifier: z.string().optional(),
+  role: z.nativeEnum(UserRole).or(z.string()),
   mpin: z.string().optional(),
 });
 

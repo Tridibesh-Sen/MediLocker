@@ -18,32 +18,35 @@ export default function DoctorPortalPage({ onShowToast }) {
   });
   const [submittingRx, setSubmittingRx] = useState(false);
 
-  const handleLookup = (e) => {
+  const handleLookup = async (e) => {
     e.preventDefault();
     if (!patientId.trim()) return;
 
     setSearching(true);
-    setTimeout(() => {
-      setSearching(false);
+    try {
+      const data = await api.lookupPatient(patientId.trim());
       setPatientRecord({
-        name: 'Ananya Sharma',
-        unitId: patientId.trim(),
+        name: data.patientName,
+        unitId: data.medilockerId,
         age: 28,
-        gender: 'Female',
-        bloodGroup: 'O+',
-        allergies: ['Penicillin', 'Sulfa drugs'],
+        gender: 'Adult',
+        bloodGroup: 'Recorded',
         consentActive: true,
-        consentExpiresIn: '12 mins remaining',
+        consentExpiresIn: 'Active Sovereign Consent',
       });
       onShowToast?.({
         type: 'success',
         title: 'Consent Verified',
-        message: 'Active sovereign 15-minute consent detected.'
+        message: `Active record access confirmed for ${data.patientName}.`
       });
-    }, 600);
+    } catch (err) {
+      onShowToast?.({ type: 'error', message: err.message || 'Patient not found or invalid Unit ID.' });
+    } finally {
+      setSearching(false);
+    }
   };
 
-  const handleRxSubmit = (e) => {
+  const handleRxSubmit = async (e) => {
     e.preventDefault();
     if (!rxForm.diagnosis || !rxForm.medicineName) {
       onShowToast?.({ type: 'error', message: 'Please fill in diagnosis and medication name.' });
@@ -51,12 +54,30 @@ export default function DoctorPortalPage({ onShowToast }) {
     }
 
     setSubmittingRx(true);
-    setTimeout(() => {
-      setSubmittingRx(false);
+    try {
+      await api.createRecord({
+        category: 'Prescription',
+        doctorName: 'Attending Physician',
+        clinicName: 'MediLocker Outpatient Clinic',
+        date: new Date().toISOString(),
+        diagnoses: [rxForm.diagnosis],
+        clinicalSummary: rxForm.instructions || `Diagnosed with ${rxForm.diagnosis}. Initiated ${rxForm.medicineName}.`,
+        prescriptions: [
+          {
+            medicineName: rxForm.medicineName,
+            dosage: rxForm.dosage,
+            frequency: rxForm.frequency,
+            timing: rxForm.timing,
+            durationDays: 7,
+            totalQuantity: 14,
+          }
+        ]
+      });
+
       onShowToast?.({
         type: 'success',
         title: 'Prescription Vaulted',
-        message: `Digital prescription dispatched directly to ${patientRecord.name}'s MediLocker!`
+        message: `Digital prescription created and cryptographically saved to Supabase!`
       });
       setRxForm({
         diagnosis: '',
@@ -66,7 +87,11 @@ export default function DoctorPortalPage({ onShowToast }) {
         timing: 'After Food',
         instructions: '',
       });
-    }, 700);
+    } catch (err) {
+      onShowToast?.({ type: 'error', message: 'Failed to vault prescription.' });
+    } finally {
+      setSubmittingRx(false);
+    }
   };
 
   return (

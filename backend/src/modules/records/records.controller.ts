@@ -26,6 +26,15 @@ export class RecordsController {
     }
   }
 
+  static async createManual(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await RecordsService.createManualRecord(req.user!.userId, req.body);
+      res.status(201).json({ success: true, record: result.record, timelineEvent: result.timelineEvent });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
       const filter = req.query.type as string;

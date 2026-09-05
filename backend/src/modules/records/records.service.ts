@@ -131,6 +131,88 @@ export class RecordsService {
   }
 
   /**
+   * Manually record a prescription or clinical document
+   */
+  static async createManualRecord(userId: string, data: any) {
+    const docType = (data.category?.toUpperCase() === 'PRESCRIPTION'
+      ? DocumentType.PRESCRIPTION
+      : data.category?.toUpperCase() === 'LAB REPORT' || data.category?.toUpperCase() === 'REPORT'
+      ? DocumentType.REPORT
+      : DocumentType.OTHER) as DocumentType;
+
+    const record = await prisma.medicalRecord.create({
+      data: {
+        patientId: userId,
+        originalFilename: `manual_entry_${Date.now()}.json`,
+        storageKey: 'manual_submission',
+        mimeType: 'application/json',
+        fileSizeBytes: BigInt(0),
+        sha256Checksum: crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex'),
+        documentType: docType,
+        userNote: data.clinicalSummary || 'Manual patient submission',
+        processingStatus: ProcessingStatus.COMPLETED,
+      },
+    });
+
+    const diagnosesList = Array.isArray(data.diagnoses)
+      ? data.diagnoses
+      : [data.diagnoses || 'General Clinical Consultation'];
+
+    const timelineEvent = await prisma.timelineEvent.create({
+      data: {
+        recordId: record.id,
+        patientId: userId,
+        eventDateDdmmyyyy: data.eventDateDdmmyyyy || '05092026',
+        doctorName: data.doctorName || 'Dr. Not Specified',
+        clinicName: data.clinicName || 'Personal Health Record',
+        diagnoses: diagnosesList,
+        allergiesDetected: data.allergiesDetected || [],
+        clinicalTestsDue: data.clinicalTestsDue || data.testsDue || [],
+        clinicalSummary: data.clinicalSummary || '',
+      },
+    });
+
+    if (Array.isArray(data.prescribedMedications) && data.prescribedMedications.length > 0) {
+      for (const med of data.prescribedMedications) {
+        if (!med.medicineName) continue;
+        const createdMed = await prisma.prescribedMedication.create({
+          data: {
+            timelineEventId: timelineEvent.id,
+            patientId: userId,
+            medicineName: med.medicineName,
+            activeSalt: med.activeSalt,
+            dosage: med.dosage || '1 tablet',
+            frequency: med.frequency || '1-0-1',
+            route: med.route || 'Oral',
+            timingInstruction: med.timing || med.timingInstruction || 'After food',
+            courseStartDate: new Date(),
+            courseEndDate: new Date(Date.now() + 7 * 86400000),
+            totalQuantityNeeded: Number(med.totalQuantityNeeded) || 10,
+            isActive: true,
+          },
+        });
+
+        // Add today's to-do task
+        await prisma.dailyTodoItem.create({
+          data: {
+            patientId: userId,
+            medicationId: createdMed.id,
+            scheduleDate: new Date(),
+            timeSlot: 'MORNING',
+            taskLabel: `${med.medicineName} (${med.dosage || '1 tab'} - ${med.timing || 'After food'})`,
+            isCompleted: false,
+          },
+        });
+      }
+    }
+
+    return {
+      record,
+      timelineEvent,
+    };
+  }
+
+  /**
    * List medical records with type filter
    */
   static async listRecords(userId: string, filter?: string) {
@@ -143,14 +225,35 @@ export class RecordsService {
       where,
       orderBy: { uploadedAt: 'desc' },
       include: {
-        timelineEvent: true,
+        timelineEvent: {
+          include: { prescribedMeds: true },
+        },
       },
     });
 
-    return records.map((r) => ({
-      ...r,
-      fileSizeBytes: r.fileSizeBytes.toString(),
-    }));
+    return records.map((r) => {
+      const event = r.timelineEvent;
+      return {
+        id: r.id,
+        category: r.documentType === 'PRESCRIPTION' ? 'Prescription' : r.documentType === 'REPORT' ? 'Lab Report' : 'Medical Record',
+        dateFormatted: r.uploadedAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        eventDateDdmmyyyy: event?.eventDateDdmmyyyy || '05092026',
+        doctorName: event?.doctorName || 'Dr. Self-Entered',
+        clinicName: event?.clinicName || 'Personal Vault',
+        diagnoses: event?.diagnoses || ['General Record'],
+        clinicalSummary: event?.clinicalSummary || r.userNote || 'Sovereign clinical record.',
+        prescribedMedications: (event?.prescribedMeds || []).map((m) => ({
+          medicineName: m.medicineName,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          timing: m.timingInstruction,
+        })),
+        testsDue: event?.clinicalTestsDue || [],
+        storageKey: r.storageKey,
+        mimeType: r.mimeType,
+        uploadedAt: r.uploadedAt,
+      };
+    });
   }
 
   /**

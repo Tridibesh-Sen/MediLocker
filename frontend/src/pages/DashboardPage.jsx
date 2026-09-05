@@ -124,41 +124,47 @@ export default function DashboardPage({ user, setCurrentView, onShowToast, onOpe
 
             {/* Checklist */}
             <div className="space-y-2.5">
-              {medications.map((med) => (
-                <div
-                  key={med.id}
-                  onClick={() => handleToggleMed(med.id)}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                    med.takenToday
-                      ? 'bg-emerald-50/70 border-emerald-200 text-slate-500'
-                      : 'bg-white border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 text-slate-800 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition ${
-                      med.takenToday ? 'bg-emerald-600 text-white' : 'border-2 border-slate-300'
-                    }`}>
-                      {med.takenToday && <CheckCircle2 className="w-4 h-4" />}
-                    </div>
-                    <div>
-                      <div className={`font-bold text-sm leading-tight ${med.takenToday ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                        {med.name}
-                      </div>
-                      <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                        <span>{med.dosage}</span>
-                        <span>•</span>
-                        <span>{med.timing}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                    med.slot === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
-                  }`}>
-                    {med.slot}
-                  </span>
+              {medications.length === 0 ? (
+                <div className="text-center py-6 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-400">
+                  No medicine tasks for today.
                 </div>
-              ))}
+              ) : (
+                medications.map((med) => (
+                  <div
+                    key={med.id}
+                    onClick={() => handleToggleMed(med.id)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                      med.takenToday
+                        ? 'bg-emerald-50/70 border-emerald-200 text-slate-500'
+                        : 'bg-white border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 text-slate-800 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition ${
+                        med.takenToday ? 'bg-emerald-600 text-white' : 'border-2 border-slate-300'
+                      }`}>
+                        {med.takenToday && <CheckCircle2 className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <div className={`font-bold text-sm leading-tight ${med.takenToday ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                          {med.name}
+                        </div>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{med.dosage}</span>
+                          <span>•</span>
+                          <span>{med.timing}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                      med.slot === 'Morning' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
+                    }`}>
+                      {med.slot}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <button
@@ -191,30 +197,43 @@ export default function DashboardPage({ user, setCurrentView, onShowToast, onOpe
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {records.map((rec) => (
-            <div
-              key={rec.id}
-              onClick={() => setCurrentView('records')}
-              className="p-4 rounded-xl border border-slate-200 hover:border-sky-300 hover:shadow-md transition bg-slate-50/50 hover:bg-white cursor-pointer space-y-3 flex flex-col justify-between"
+        {records.length === 0 ? (
+          <div className="text-center py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-xs text-slate-400 space-y-2">
+            <p>No vaulted medical records yet.</p>
+            <button
+              onClick={() => setCurrentView('upload')}
+              className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-sm"
             >
-              <div>
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded text-[10px] uppercase">
-                    {rec.category}
-                  </span>
-                  <span className="text-slate-400 font-mono text-[11px]">{rec.dateFormatted}</span>
+              <PlusCircle className="w-4 h-4" />
+              <span>Upload First Document</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {records.map((rec) => (
+              <div
+                key={rec.id}
+                onClick={() => setCurrentView('records')}
+                className="p-4 rounded-xl border border-slate-200 hover:border-sky-300 hover:shadow-md transition bg-slate-50/50 hover:bg-white cursor-pointer space-y-3 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className="font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded text-[10px] uppercase">
+                      {rec.category}
+                    </span>
+                    <span className="text-slate-400 font-mono text-[11px]">{rec.dateFormatted}</span>
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm">{rec.diagnoses?.join(', ')}</h4>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{rec.clinicalSummary}</p>
                 </div>
-                <h4 className="font-bold text-slate-900 text-sm">{rec.diagnoses?.join(', ')}</h4>
-                <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{rec.clinicalSummary}</p>
-              </div>
 
-              <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-                {rec.doctorName} · {rec.clinicName}
+                <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+                  {rec.doctorName} · {rec.clinicName}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

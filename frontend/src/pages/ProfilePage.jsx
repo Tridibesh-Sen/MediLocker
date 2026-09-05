@@ -4,34 +4,56 @@ import { api } from '../services/api';
 
 export default function ProfilePage({ user, onShowToast }) {
   const [profile, setProfile] = useState(user || api.getCurrentUser());
-  const [allergiesText, setAllergiesText] = useState(profile?.allergies?.join(', ') || 'Penicillin, Sulfa drugs');
-  const [chronicText, setChronicText] = useState(profile?.chronicConditions?.join(', ') || 'Mild Asthma, Migraine');
+  const [allergiesText, setAllergiesText] = useState(profile?.allergies?.join(', ') || '');
+  const [chronicText, setChronicText] = useState(profile?.chronicConditions?.join(', ') || '');
   const [emergencyContact, setEmergencyContact] = useState({
-    name: profile?.emergencyContact?.name || 'Rajesh Sharma',
-    relation: profile?.emergencyContact?.relation || 'Father',
-    phone: profile?.emergencyContact?.phone || '+91 98765 11223',
+    name: profile?.emergencyContact?.name || '',
+    relation: profile?.emergencyContact?.relation || 'Family',
+    phone: profile?.emergencyContact?.phone || '',
   });
   const [saving, setSaving] = useState(false);
 
-  const handleSaveProfile = (e) => {
+  useEffect(() => {
+    async function load() {
+      const live = await api.getProfile();
+      if (live) {
+        setProfile(live);
+        setAllergiesText(live.allergies?.join(', ') || '');
+        setChronicText(live.chronicConditions?.join(', ') || '');
+        setEmergencyContact({
+          name: live.emergencyContact?.name || '',
+          relation: live.emergencyContact?.relation || 'Family',
+          phone: live.emergencyContact?.phone || '',
+        });
+      }
+    }
+    load();
+  }, []);
+
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      const updated = {
-        ...profile,
+    try {
+      const updatedPayload = {
+        name: profile?.name,
         allergies: allergiesText.split(',').map((s) => s.trim()).filter(Boolean),
         chronicConditions: chronicText.split(',').map((s) => s.trim()).filter(Boolean),
         emergencyContact,
       };
-      setProfile(updated);
-      api.setSession(api.getToken(), updated);
+      const res = await api.updateProfile(updatedPayload);
+      if (res.success) {
+        setProfile(res.data);
+        onShowToast?.({
+          type: 'success',
+          title: 'Profile Updated',
+          message: 'Clinical baselines and emergency contacts synced with Supabase.'
+        });
+      }
+    } catch (err) {
+      onShowToast?.({ type: 'error', message: err.message || 'Failed to save profile changes.' });
+    } finally {
       setSaving(false);
-      onShowToast?.({
-        type: 'success',
-        title: 'Profile Updated',
-        message: 'Clinical baselines and emergency contact saved securely.'
-      });
-    }, 500);
+    }
   };
 
   return (

@@ -13,6 +13,7 @@ router.post('/webauthn/login/verify', AuthController.verifyWebAuthnAuth);
 
 // Protected routes
 router.get('/me', authenticate, AuthController.me);
+router.put('/me', authenticate, AuthController.updateProfile);
 router.post('/change-mpin', authenticate, AuthController.changeMpin);
 router.get('/webauthn/register/options', authenticate, AuthController.getWebAuthnRegisterOptions);
 router.post('/webauthn/register/verify', authenticate, AuthController.verifyWebAuthnRegister);
