@@ -41,6 +41,35 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve local upload fallback
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// Root welcome & API info
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'online',
+    name: 'MediLocker Core Backend API',
+    documentation: 'Sovereign Digital Health Vault with Medi-AI',
+    health: '/api/v1/health',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/v1/health',
+      auth: '/api/v1/auth',
+      records: '/api/v1/records',
+      todo: '/api/v1/todo',
+      ai: '/api/v1/ai',
+      inventory: '/api/v1/inventory',
+      delegation: '/api/v1/delegation',
+    },
+  });
+});
+
+app.get('/api/v1', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'online',
+    version: 'v1',
+    message: 'MediLocker API v1 is active.',
+    health: '/api/v1/health',
+  });
+});
+
 // Root & Health check
 app.get('/api/v1/health', (req: Request, res: Response) => {
   res.status(200).json({
