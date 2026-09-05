@@ -21,6 +21,12 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().default(''),
   CLOUDINARY_API_SECRET: z.string().default(''),
 
+  // Supabase (Storage & Platform)
+  SUPABASE_URL: z.string().default(''),
+  SUPABASE_KEY: z.string().default(''),
+  SUPABASE_ANON_KEY: z.string().default(''),
+  SUPABASE_BUCKET: z.string().default('medical-records'),
+
   // Redis (Optional)
   UPSTASH_REDIS_REST_URL: z.string().default(''),
   UPSTASH_REDIS_REST_TOKEN: z.string().default(''),

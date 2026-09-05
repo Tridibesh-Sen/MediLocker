@@ -1,23 +1,9 @@
+import { createClient } from '@supabase/supabase-js';
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
 import { env } from '../config/env';
 import { logger } from './logger';
-
-const isCloudinaryConfigured = Boolean(
-  env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET
-);
-
-if (isCloudinaryConfigured) {
-  cloudinary.config({
-    cloud_name: env.CLOUDINARY_CLOUD_NAME,
-    api_key: env.CLOUDINARY_API_KEY,
-    api_secret: env.CLOUDINARY_API_SECRET,
-  });
-  logger.info('Cloudinary storage engine configured.');
-} else {
-  logger.warn('Cloudinary not configured. Using local disk storage fallback.');
-}
 
 export interface UploadResult {
   url: string;
@@ -25,11 +11,88 @@ export interface UploadResult {
   bytes: number;
 }
 
+// Supabase Storage setup
+const isSupabaseStorageConfigured = Boolean(env.SUPABASE_URL && env.SUPABASE_KEY);
+const supabase = isSupabaseStorageConfigured
+  ? createClient(env.SUPABASE_URL, env.SUPABASE_KEY)
+  : null;
+
+// Cloudinary setup
+const isCloudinaryConfigured = Boolean(
+  env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET
+);
+
+if (isSupabaseStorageConfigured) {
+  logger.info('Supabase Storage engine configured.');
+} else if (isCloudinaryConfigured) {
+  cloudinary.config({
+    cloud_name: env.CLOUDINARY_CLOUD_NAME,
+    api_key: env.CLOUDINARY_API_KEY,
+    api_secret: env.CLOUDINARY_API_SECRET,
+  });
+  logger.info('Cloudinary storage engine configured.');
+} else {
+  logger.warn('Cloud storage not configured. Using local disk storage fallback.');
+}
+
+// Upload medical document
 export async function uploadMedicalDocument(
   fileBuffer: Buffer,
   originalFilename: string,
   mimeType: string
 ): Promise<UploadResult> {
+  const safeFilename = `${Date.now()}-${originalFilename.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+  // 1. Supabase Storage
+  if (isSupabaseStorageConfigured && supabase) {
+    try {
+      const bucket = env.SUPABASE_BUCKET || 'medical-records';
+      const storagePath = `records/${safeFilename}`;
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(storagePath, fileBuffer, {
+          contentType: mimeType || 'application/octet-stream',
+          upsert: false,
+        });
+
+      if (error) {
+        // If bucket does not exist, attempt to create it
+        if (error.message?.includes('Bucket not found') || error.message?.includes('bucket')) {
+          await supabase.storage.createBucket(bucket, { public: true });
+          const retry = await supabase.storage.from(bucket).upload(storagePath, fileBuffer, {
+            contentType: mimeType || 'application/octet-stream',
+          });
+          if (retry.error) throw retry.error;
+        } else {
+          throw error;
+        }
+      }
+
+      // Generate signed URL (valid for 7 days) or fallback to public URL
+      let fileUrl = '';
+      const { data: signedData, error: signedErr } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+
+      if (!signedErr && signedData?.signedUrl) {
+        fileUrl = signedData.signedUrl;
+      } else {
+        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+        fileUrl = urlData?.publicUrl || `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${storagePath}`;
+      }
+
+      return {
+        url: fileUrl,
+        storageKey: storagePath,
+        bytes: fileBuffer.length,
+      };
+    } catch (err: any) {
+      logger.warn('Supabase storage upload failed, attempting fallback:', err?.message);
+    }
+  }
+
+  // 2. Cloudinary
   if (isCloudinaryConfigured) {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -53,15 +116,13 @@ export async function uploadMedicalDocument(
     });
   }
 
-  // Local Disk Storage Fallback
+  // 3. Local Disk Storage Fallback
   const uploadsDir = path.join(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
-  const safeFilename = `${Date.now()}-${originalFilename.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
   const filePath = path.join(uploadsDir, safeFilename);
-
   await fs.promises.writeFile(filePath, fileBuffer);
 
   return {
