@@ -23,18 +23,18 @@ import { PhoneCall, Heart, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState(api.getCurrentUser());
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState(() => (api.isAuthenticated() ? 'dashboard' : 'landing'));
   const [lang, setLang] = useState('en');
   const [fontScale, setFontScale] = useState(1);
   const [toast, setToast] = useState(null);
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
 
   useEffect(() => {
-    // If not authenticated, start on landing page
+    // If not authenticated, ensure landing view
     if (!api.isAuthenticated() && !user) {
       setCurrentView('landing');
     }
-  }, []);
+  }, [user]);
 
   const handleLoginSuccess = (loggedInUser) => {
     setUser(loggedInUser);
