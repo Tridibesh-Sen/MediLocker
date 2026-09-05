@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MediLocker — Sovereign Health DigiLocker (Government of India ABDM)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!-- Gov topbar -->
+<div class="gov-topbar">
+  <div class="gov-topbar-inner">
+    <div class="gov-left">
+      <span class="gov-flag"><span></span><span></span><span></span></span>
+      <strong class="gov-title">भारत सरकार | Government of India</strong>
+      <span class="gov-sub">Ministry of Electronics & IT · National Health Authority (ABDM)</span>
+    </div>
+    <div class="gov-right">
+      <div class="accessibility-ctrls">
+        <button type="button" class="font-btn" data-resize="dec" title="Decrease font size">A-</button>
+        <button type="button" class="font-btn active" data-resize="norm" title="Default font size">A</button>
+        <button type="button" class="font-btn" data-resize="inc" title="Increase font size">A+</button>
+      </div>
+      <a href="#mainContent" class="skip-link">Skip to main</a>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="site-header">
+<a class="brand" href="index.html">
+  <span class="brand-mark">M</span>
+  <div>
+    <span>Medi<span>Locker</span></span>
+    <small class="brand-tagline">Sovereign Health DigiLocker</small>
+  </div>
+</a>
+<nav class="nav-links"><a href="#features" data-i18n="navFeatures">Features</a><a href="#portals" data-i18n="navPortals">Access portals</a></nav>
+<div class="header-actions"><button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button><select id="languageSelect"><option value="en">English</option><option value="bn">বাংলা</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option><option value="ur">اردو</option><option value="pa">ਪੰਜਾਬੀ</option><option value="kn">ಕನ್ನಡ</option></select><a class="signin" href="login.html" data-i18n="signIn">Sign in ↗</a></div>
+</header>
+<main id="mainContent">
+<!-- Hero -->
+<section class="hero">
+<div class="hero-copy"><div class="eyebrow"><span class="eyebrow-dot"></span><span data-i18n="eyebrow">DIGILOCKER FOR HEALTHCARE</span></div>
+<h1><span>Your health story,</span><br><em>anytime, anywhere.</em></h1>
+<p class="hero-text" data-i18n="heroText">MediLocker is India's sovereign medical locker. Store issued hospital discharge papers, clinic prescriptions, lab diagnostics, and daily medicine routines in one tamper-evident digital vault.</p>
+<div class="hero-buttons"><a class="primary-btn" href="login.html?role=patient" data-i18n="enter">Enter MediLocker ↗</a><a class="text-btn" href="#features" data-i18n="seeHow">Explore issued documents ↓</a></div>
+<div class="patient-note"><div class="mini-bubbles"><span>P</span><span>A</span><span>S</span></div><div><strong data-i18n="designed">Designed around patient sovereignty</strong><small data-i18n="records">Documents issued by verified doctors & hospitals with digital integrity.</small></div></div></div>
+<div class="health-card landing-card"><div class="card-topline"><span>DIGILOCKER VERIFIED VAULT</span><span class="live-dot">● <span data-i18n="secured">secured</span></span></div><h2>Your records, authenticated at the source.</h2><div class="workspace-steps"><div class="workspace-step"><span>01</span><div><strong>Generate 9-Digit Unit ID</strong><p>Register as Citizen, Doctor, or Hospital to receive your unique sovereign identifier.</p></div></div><div class="workspace-step"><span>02</span><div><strong>Issued & Uploaded Vaults</strong><p>Receive digitally signed prescriptions or upload paper records with Gemini 2.0 AI extraction.</p></div></div><div class="workspace-step"><span>03</span><div><strong>Sovereign Consent Delegation</strong><p>Grant temporary 2-hour scoped access to attending doctors with your 6-digit MPIN.</p></div></div></div><div class="landing-card-footer"><span>Digital India</span><span>ABDM Health ID</span><span>Argon2id Vault</span></div></div>
+</section>
+<!-- Features -->
+<section class="feature-strip" id="features">
+<article><span>01</span><div><h3 data-i18n="feature1">Issued Documents Vault</h3><p data-i18n="feature1Text">Direct digital issuance from hospitals, labs, and registered physicians.</p></div></article>
+<article><span>02</span><div><h3 data-i18n="feature2">Consent-Led Delegation</h3><p data-i18n="feature2Text">Patients grant granular 2-hour clinical access confirmed by patient MPIN.</p></div></article>
+<article><span>03</span><div><h3 data-i18n="feature3">Medication Checklist</h3><p data-i18n="feature3Text">Automated daily dosage tracking, barcode scanning, and direct 1mg refill access.</p></div></article>
+</section>
+<!-- Portals -->
+<section class="portals-section" id="portals"><div class="section-heading"><span class="eyebrow" data-i18n="access">ACCESS</span><h2 data-i18n="choosePortal">Choose your care portal.</h2><p data-i18n="portalText">Citizen health locker, licensed practitioner workspace, or institutional hospital intake.</p></div>
+<div class="portal-grid"><a class="portal-card patient" href="login.html?role=patient"><span class="portal-icon">♡</span><div><span data-i18n="patient">Citizen / Patient</span><small data-i18n="manageRecords">Manage your medical locker</small></div><b>↗</b></a>
+<a class="portal-card doctor" href="login.html?role=doctor"><span class="portal-icon">✚</span><div><span data-i18n="doctor">Medical Doctor</span><small data-i18n="accessCare">Access patient clinical dossier</small></div><b>↗</b></a>
+<a class="portal-card hospital" href="login.html?role=hospital"><span class="portal-icon">▦</span><div><span data-i18n="hospital">Hospital / Clinic</span><small data-i18n="managePatients">Inpatient intake & doctor allotment</small></div><b>↗</b></a></div></section>
+</main>
+<!-- Footer -->
+<footer><span>© 2026 MediLocker · Digital India Initiative · ABDM Compatible</span><span data-i18n="footer">A sovereign digital home for organized healthcare.</span></footer>
+<script src="js/i18n.js"></script>
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>
+</body></html>

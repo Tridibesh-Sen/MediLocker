@@ -8,10 +8,27 @@ Repository Structure
 
 MediLocker/
 │
-├── frontend/     # Frontend application
-├── backend/      # Backend/API/server application
+├── frontend/     # Frontend client application (HTML5, Vanilla CSS, JS)
+├── backend/      # Node.js + Express + TypeScript + Prisma API
+├── scripts/      # Dev server scripts
+├── package.json  # Unified workspace package
 ├── README.md
 └── .gitignore
+
+Quick Start
+
+Run the entire full-stack application with a single command from the root directory:
+
+```bash
+# 1. Install dependencies
+npm run install:all
+
+# 2. Run both frontend and backend concurrently
+npm run dev
+```
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:5000/api/v1/health
 
 Development
 
