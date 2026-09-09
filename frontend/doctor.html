@@ -1,170 +1,127 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MediLocker — Doctor Clinical Portal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MediLocker — Doctor Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="provider-portal" data-provider-role="doctor">
-  <!-- Gov topbar -->
-  <div class="gov-topbar">
-    <div class="gov-topbar-inner">
-      <div class="gov-left">
-        <span class="gov-flag"><span></span><span></span><span></span></span>
-        <strong class="gov-title">भारत सरकार | Government of India</strong>
-        <span class="gov-sub">National Health Authority · ABDM DigiLocker</span>
-      </div>
-      <div class="gov-right">
-        <div class="accessibility-ctrls">
-          <button type="button" class="font-btn" data-resize="dec" title="Decrease font">A-</button>
-          <button type="button" class="font-btn active" data-resize="norm" title="Normal font">A</button>
-          <button type="button" class="font-btn" data-resize="inc" title="Increase font">A+</button>
-        </div>
-        <a href="#mainContent" class="skip-link">Skip to main</a>
-      </div>
+<body class="app-page provider-portal" data-provider-role="doctor">
+  <header class="app-header">
+    <a class="brand" href="index.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
+    <div class="app-header-right">
+      <button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button>
+      <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="bn">বাংলা</option>
+        <option value="hi">हिन्दी</option>
+        <option value="mr">मराठी</option>
+        <option value="ur">اردو</option>
+        <option value="pa">ਪੰਜਾਬੀ</option>
+        <option value="kn">ಕನ್ನಡ</option>
+      </select>
+      <a href="index.html" class="signin" data-logout>Log out</a>
     </div>
-  </div>
+  </header>
 
-  <div class="app-shell" id="mainContent">
+  <div class="app-layout">
     <aside class="sidebar">
-      <a class="brand" href="index.html">
-        <span class="brand-mark">M</span>
-        <div>
-          <span>Medi<span>Locker</span></span>
-          <small class="brand-tagline">Sovereign Health DigiLocker</small>
-        </div>
-      </a>
-      <div class="user-mini">
-        <span class="user-avatar" data-provider-initials>DR</span>
-        <div>
-          <strong data-provider-name>Doctor</strong>
-          <small>Doctor · <span data-provider-unit>Unit ID</span></small>
-        </div>
+      <div class="patient-mini">
+        <div class="avatar" data-provider-initials>DR</div>
+        <strong data-provider-name>Doctor</strong>
+        <small>Doctor · <span data-provider-unit>Unit ID</span></small>
       </div>
       <nav class="side-nav">
-        <a class="active" href="doctor.html">⌂ Overview</a>
-        <a href="#authorizedRoster">👥 Authorized Patients</a>
+        <a class="active" href="doctor.html">⌂ <span>Overview</span></a>
+        <a href="#patientSearch">▦ <span>Search patient</span></a>
       </nav>
       <div class="side-bottom">
-        <a href="login.html" data-logout>↪ Log out</a>
+        <a href="login.html?role=doctor">↪ <span>Switch portal</span></a>
       </div>
     </aside>
 
     <main class="app-main">
-      <header class="app-topbar">
+      <div class="page-title">
         <div>
-          <p class="eyebrow">DOCTOR PORTAL</p>
+          <span class="eyebrow">DOCTOR PORTAL</span>
           <h1>Clinical workspace.</h1>
-          <p>Request authorized patient access via 9-digit Unit ID & Patient MPIN consent.</p>
+          <p>Find a patient using their MediLocker Unique Unit ID to review authorized health records.</p>
         </div>
-        <span class="status-chip">● Verified Medical Practitioner</span>
-      </header>
+        <span class="status-pill" style="background:var(--lav);color:var(--plum);">Professional Account</span>
+      </div>
 
       <section class="provider-hero">
         <div>
-          <span class="eyebrow">CONSENT-BACKED CLINICAL ACCESS</span>
-          <h2>Add patient with sovereign consent.</h2>
-          <p>Patients retain complete sovereignty. Access requires the patient's 9-digit Unit ID and patient MPIN confirmation.</p>
+          <span class="eyebrow" style="color:#b9a9c4;">PATIENT ACCESS</span>
+          <h2 style="font:800 32px 'Manrope';margin:10px 0;">Search patient by Unique Unit ID.</h2>
+          <p style="color:#d5cdda;font-size:16px;">Enter the Unit ID supplied by the patient to review authorized clinical history, allergies, and symptom trajectories.</p>
         </div>
-        <div style="display:flex; align-items:center;">
-          <button class="primary-btn" id="openConsentModalBtn" style="background:#ffffff; color:#5c426d; font-weight:800;">
-            ＋ Authorize New Patient
-          </button>
-        </div>
-      </section>
-
-      <!-- Authorized roster -->
-      <section class="panel" id="authorizedRoster" style="margin-top: 28px;">
-        <div class="search-heading">
-          <div>
-            <p class="eyebrow">AUTHORIZED PATIENT ROSTER</p>
-            <h3>Active Clinical Delegations</h3>
-          </div>
-          <span class="tag" style="background:#dcfce7; color:#166534;">2-Hour Scoped Access</span>
-        </div>
-
-        <div id="authorizedPatientsList" style="display:grid; gap:12px; margin-top:16px;">
-          <div style="padding:20px; background:#faf8fc; border-radius:14px; color:#7c7480; font-size:13.5px;">
-            No active patient authorizations. Click <strong>Authorize New Patient</strong> above with the patient's consent.
-          </div>
+        <div class="provider-stat">
+          <strong>01</strong>
+          <span>Active doctor session</span>
         </div>
       </section>
 
-      <!-- Patient dossier -->
-      <section id="patientDetailView" class="panel hidden" style="margin-top: 28px; border-left:4px solid #6b4d7e;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <section class="profile-card" id="patientSearch" style="margin-top:30px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
           <div>
-            <span class="eyebrow">PATIENT CLINICAL DOSSIER</span>
-            <h2 id="patientDetailName" style="margin:4px 0 2px 0;">Patient Name</h2>
-            <p id="patientDetailMeta" style="margin:0; font-size:13px; color:#6e6475;">Unit ID: ML-XXX-XXX-XXX</p>
+            <span class="eyebrow">PATIENT LOOKUP</span>
+            <h3 style="font:800 24px 'Manrope';margin:4px 0 0;">Find patient</h3>
           </div>
-          <button id="closePatientDetailBtn" class="primary-btn ghost" style="padding:6px 12px; font-size:12px;">Close Dossier &times;</button>
+          <span class="status-pill">Unit ID required</span>
         </div>
 
-        <!-- Adherence synopsis -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0;">
-          <div style="padding:16px; background:#faf8fc; border-radius:14px; border:1px solid #eee5f2;">
-            <span class="eyebrow" style="color:#6b4d7e;">MEDICATION ADHERENCE</span>
-            <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;">
-              <h3 id="docPatientStreak" style="margin:0; font-size:24px; color:#c2410c;">0 Days 🔥</h3>
-              <span id="docPatientRate" style="font-size:13px; color:#7c7480;">(0% compliance)</span>
-            </div>
-            <small style="color:#877c8d;">Compiled daily at midnight from prescribed courses.</small>
-          </div>
+        <form id="patientSearchForm" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+          <input id="patientUnitSearch" required placeholder="Enter patient Unit ID · e.g. ML-XXXX-XXXX" autocomplete="off" style="flex:1;min-width:260px;border:1px solid var(--line);border-radius:14px;padding:14px 18px;font:500 16px 'DM Sans',sans-serif;background:#fff;">
+          <button class="primary-btn" type="submit">Search patient ↗</button>
+        </form>
 
-          <div style="padding:16px; background:#faf8fc; border-radius:14px; border:1px solid #eee5f2;">
-            <span class="eyebrow" style="color:#6b4d7e;">EVENING SYMPTOM SYNOPSIS</span>
-            <div id="docFeelingSynopsis" style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-              <span style="font-size:13px; color:#7c7480;">No feeling check-ins logged yet.</span>
-            </div>
-            <small style="color:#877c8d; display:block; margin-top:6px;">Color key: 🟢 Feeling Good | 🟡 Mild Discomfort | 🔴 Severe</small>
-          </div>
+        <div id="patientSearchEmpty" class="empty-state compact">
+          <div class="empty-icon">⌕</div>
+          <h3>Ready to search</h3>
+          <p>Use the patient's exact MediLocker Unit ID. No sample patients are displayed automatically.</p>
         </div>
 
-        <!-- Timeline -->
+        <div id="patientSearchResult" class="patient-result hidden"></div>
+      </section>
+
+      <!-- Active Authorized Patients Section -->
+      <section class="profile-card" id="activePatientsSection" style="margin-top:30px;">
+        <div class="card-topline">
+          <span>ACTIVE SESSIONS</span>
+          <span class="live-dot">● Sovereign Patient Consent</span>
+        </div>
+        <h3 style="font:800 24px 'Manrope';margin:10px 0 16px;">Currently Authorized Patients</h3>
+        <div id="activePatientsList">
+          <div class="empty-state compact">
+            <p style="margin:0;color:var(--muted);">No active patient consultations. Enter a patient Unit ID above to send an access request.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full Authorized Patient Inspection Modal -->
+      <div class="modal hidden" id="patientRecordModal">
+        <div class="modal-card" style="max-width:980px;width:95%;max-height:90vh;overflow-y:auto;text-align:left;padding:32px;">
+          <button class="modal-close" id="closePatientRecordModal">×</button>
+          <div id="patientRecordModalContent"></div>
+        </div>
+      </div>
+
+      <div class="emergency-box" style="margin-top:30px;background:#f5ece7;">
+        <span>ℹ</span>
         <div>
-          <span class="eyebrow" style="color:#6b4d7e;">CHRONOLOGICAL TIMELINE</span>
-          <h3 style="margin:4px 0 16px 0;">Prescriptions & Lab History</h3>
-          <div id="docPatientTimeline"></div>
+          <strong>Consent-Led Access Control</strong>
+          <p>This workspace operates under sovereign patient authorization. Clinical records are unlocked exclusively during active consultation sessions under patient consent.</p>
         </div>
-      </section>
+      </div>
     </main>
   </div>
 
-  <!-- Consent modal -->
-  <div class="modal hidden" id="consentModal">
-    <div class="modal-card" style="max-width: 480px; text-align: left;">
-      <button class="modal-close" id="closeConsentModal" type="button">&times;</button>
-      <span class="eyebrow" style="color:#6b4d7e;">PATIENT CONSENT DELEGATION</span>
-      <h2 style="margin:4px 0 8px 0; font-size:22px;">Authorize Patient Record</h2>
-      <p style="margin:0 0 18px 0; font-size:13px; color:#6e6475;">
-        The patient must provide their 9-digit MediLocker Unit ID and enter their 6-digit MPIN to authorize clinical access.
-      </p>
-
-      <form id="authorizePatientForm">
-        <label style="display:block; margin-bottom:14px;">
-          <span style="display:block; font-size:13px; font-weight:700; margin-bottom:4px;">Patient 9-Digit Unit ID *</span>
-          <input type="text" id="consentUnitId" required placeholder="ML-XXX-XXX-XXX" style="width:100%; padding:11px; border-radius:10px; border:1px solid #d8cfdf; text-transform:uppercase;">
-        </label>
-
-        <label style="display:block; margin-bottom:18px;">
-          <span style="display:block; font-size:13px; font-weight:700; margin-bottom:4px;">Patient 6-Digit MPIN (Entered by Patient) *</span>
-          <input type="password" id="consentMpin" required maxlength="6" inputmode="numeric" placeholder="••••••" style="width:100%; padding:11px; border-radius:10px; border:1px solid #d8cfdf; text-align:center; font-size:18px; letter-spacing:0.2em;">
-        </label>
-
-        <button class="primary-btn full" type="submit" id="confirmConsentBtn">
-          Verify MPIN & Authorize 2h Access ↗
-        </button>
-      </form>
-    </div>
-  </div>
-
   <script src="js/i18n.js"></script>
-  <script src="js/api.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

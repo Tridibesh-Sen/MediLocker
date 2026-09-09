@@ -10,7 +10,15 @@ export class RecordsController {
         throw new AppError('File is required for upload.', 400);
       }
 
-      const documentType = (req.body.documentType?.toUpperCase() as DocumentType) || DocumentType.PRESCRIPTION;
+      const docTypeStr = (req.body.documentType || '').toUpperCase();
+      const documentType: DocumentType =
+        docTypeStr === 'REPORT' || docTypeStr.includes('REPORT') || docTypeStr.includes('LAB')
+          ? DocumentType.REPORT
+          : docTypeStr === 'SCAN'
+          ? DocumentType.SCAN
+          : docTypeStr === 'PRESCRIPTION'
+          ? DocumentType.PRESCRIPTION
+          : DocumentType.OTHER;
       const note = req.body.note;
 
       const result = await RecordsService.uploadAndProcess(

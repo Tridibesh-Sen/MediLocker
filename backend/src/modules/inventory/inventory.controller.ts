@@ -16,6 +16,8 @@ const homeSupplySchema = z.object({
   barcodeGtin: z.string().optional(),
   batchNumber: z.string().optional(),
   scanMethod: z.nativeEnum(ScanMethod).optional(),
+  activeSalt: z.string().optional(),
+  aiCategory: z.string().optional(),
 });
 
 export class InventoryController {

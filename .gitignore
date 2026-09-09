@@ -78,5 +78,26 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 
-docx
+# Test scripts, code, and fixtures
+test/
+tests/
+__tests__/
+*test*.js
+*test*.ts
+*test*.mjs
+test-*.js
+clean-*.js
+*.test.*
+*.spec.*
+
+# Reference documents and schema dumps
+docx/
+backend/prisma/supabase_schema.sql
+reference/
+references/
+scratch/
+*.scratch
+*.sql.bak
+*.bak
+
 

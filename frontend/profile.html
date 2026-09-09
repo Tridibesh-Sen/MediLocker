@@ -1,45 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>MediLocker — My Sovereign Profile & Security</title>
+  <title>MediLocker — My Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="app-page patient-dashboard">
-  <!-- Gov topbar -->
-  <div class="gov-topbar">
-    <div class="gov-topbar-inner">
-      <div class="gov-left">
-        <span class="gov-flag"><span></span><span></span><span></span></span>
-        <strong class="gov-title">भारत सरकार | Government of India</strong>
-        <span class="gov-sub">National Health Authority · ABDM DigiLocker</span>
-      </div>
-      <div class="gov-right">
-        <div class="accessibility-ctrls">
-          <button type="button" class="font-btn" data-resize="dec" title="Decrease font">A-</button>
-          <button type="button" class="font-btn active" data-resize="norm" title="Normal font">A</button>
-          <button type="button" class="font-btn" data-resize="inc" title="Increase font">A+</button>
-        </div>
-        <a href="#mainContent" class="skip-link">Skip to main</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Header -->
   <header class="app-header">
-    <a class="brand" href="dashboard.html">
-      <span class="brand-mark">M</span>
-      <div>
-        <span>Medi<span>Locker</span></span>
-        <small class="brand-tagline">Sovereign Health DigiLocker</small>
-      </div>
-    </a>
+    <a class="brand" href="dashboard.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
     <div class="app-header-right">
-      <button class="location-btn" id="locationBtn">⌖ <span>Set location</span></button>
+      <button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button>
       <select id="languageSelect">
         <option value="en">English</option>
         <option value="bn">বাংলা</option>
@@ -58,98 +33,92 @@
       <div class="patient-mini">
         <div class="avatar" data-user-initials>U</div>
         <strong data-user-name>User</strong>
-        <small>Patient account</small>
+        <small data-i18n="patientAccount">Patient account</small>
       </div>
       <nav class="side-nav">
-        <a href="dashboard.html">⌂ Dashboard</a>
-        <a class="active" href="profile.html">◉ My profile</a>
-        <a href="records.html">▤ Medical records</a>
-        <a href="upload.html">＋ Upload documents</a>
-        <a href="medications.html">✓ Medication to-do</a>
+        <a href="dashboard.html">⌂ <span data-i18n="dashboard">Dashboard</span></a>
+        <a href="timeline.html">⏳ <span data-i18n="timelinePage">Health timeline</span></a>
+        <a href="records.html">▤ <span data-i18n="recordsPage">Medical records</span></a>
+        <a href="medications.html">✓ <span data-i18n="todoPage">Medication to-do</span></a>
+        <a href="inventory.html">⊞ <span data-i18n="inventoryPage">Medicine cabinet</span></a>
+        <a href="ai-companion.html">✦ <span data-i18n="aiCompanionPage">Medi-AI assistant</span></a>
+        <a href="tests.html">⚗ <span data-i18n="testsPage">Lab tests & vitals</span></a>
+        <a href="delegation.html">🛡 <span data-i18n="delegationPage">Consent & access</span></a>
+        <a href="upload.html">＋ <span data-i18n="uploadPage">Upload documents</span></a>
+        <a class="active" href="profile.html">◉ <span data-i18n="profilePage">My profile</span></a>
       </nav>
       <div class="side-bottom">
-        <a href="login.html">↪ Switch portal</a>
+        <a href="login.html">↪ <span data-i18n="switchPortal">Switch portal</span></a>
       </div>
     </aside>
 
-    <main class="app-main" id="mainContent">
+    <main class="app-main">
       <div class="page-title">
         <div>
-          <span class="eyebrow">MY SOVEREIGN PROFILE</span>
-          <h1>Your personal health identity.</h1>
-          <p>ABDM-compatible health demographics, emergency card, and biometric MPIN security.</p>
+          <span class="eyebrow">MY PROFILE</span>
+          <h1>Your personal health profile.</h1>
+          <p>These details come from your registered MediLocker account. Kept secure and accessible only under your consent.</p>
         </div>
       </div>
 
-      <!-- Profile hero -->
-      <section class="profile-card" style="margin-bottom: 24px;">
+      <section class="profile-card">
         <div class="profile-hero">
           <div class="large-avatar" data-user-initials>U</div>
           <div>
             <h2 data-user-name>User</h2>
-            <p><strong data-user-unit>ML-XXX-XXX-XXX</strong> · Sovereign DigiLocker ID</p>
+            <p data-user-unit>—</p>
           </div>
-          <span class="status-pill" style="background:#dcfce7; color:#166534;">✓ Verified Account</span>
+          <span class="status-pill">Registered account</span>
         </div>
-
         <div class="details-grid">
-          <label><span>Full name</span><input data-field="fullName" readonly></label>
-          <label><span>Date of birth</span><input data-field="dateBirth" readonly></label>
-          <label><span>Blood group</span><input data-field="bloodGroup" readonly style="font-weight:800; color:#dc2626;"></label>
-          <label><span>Phone number</span><input data-field="phone" readonly></label>
-          <label><span>Email address</span><input data-field="email" readonly></label>
-          <label><span>Location</span><input data-field="location" readonly></label>
-          <label><span>Government ID / Aadhaar</span><input data-field="govid" readonly></label>
-          <label><span>Medical insurance</span><input data-field="insurance" readonly></label>
-          <label><span>Allergies</span><input data-field="allergy" readonly style="color:#b45309; font-weight:700;"></label>
-          <label><span>Current medications</span><input data-field="medications" readonly></label>
-          <label><span>Medical history</span><input data-field="history" readonly></label>
-          <label><span>Emergency contact</span><input data-field="emergency" readonly style="font-weight:700;"></label>
-          <label class="wide"><span>Residential address</span><input data-field="address" readonly></label>
-        </div>
-      </section>
-
-      <!-- Security card -->
-      <section class="quick-card" style="display:block; margin-bottom: 32px;">
-        <div class="section-row" style="margin-bottom: 12px;">
-          <div>
-            <span class="eyebrow" style="color:#6b4d7e;">ACCOUNT SECURITY</span>
-            <h3 style="margin:4px 0; font-size:18px;">6-Digit MPIN & Biometrics</h3>
-            <p style="margin:0; font-size:13px; color:#6e6475;">Your MPIN is required whenever a doctor or hospital requests access to your locker.</p>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;">
-          <div style="flex:1; min-width:260px; padding:16px; background:#faf8fc; border-radius:14px; border:1px solid #ebe2ef;">
-            <strong style="display:block; font-size:14px; margin-bottom:4px;">Master 6-Digit PIN</strong>
-            <small style="color:#7c7480; display:block; margin-bottom:12px;">Hashed securely with Argon2id on our sovereign backend.</small>
-            <span class="status-pill" style="background:#e0e7ff; color:#3730a3;">Active & Protected</span>
-          </div>
-
-          <div style="flex:1; min-width:260px; padding:16px; background:#faf8fc; border-radius:14px; border:1px solid #ebe2ef;">
-            <strong style="display:block; font-size:14px; margin-bottom:4px;">FIDO2 Biometrics (Fingerprint / Face ID)</strong>
-            <small style="color:#7c7480; display:block; margin-bottom:12px;">Enables one-touch biometric verification without entering passwords.</small>
-            <span class="status-pill" style="background:#fef3c7; color:#92400e;">WebAuthn Ready</span>
-          </div>
+          <label>Full name<input data-field="fullName" readonly></label>
+          <label>Date of birth<input data-field="dateBirth" readonly></label>
+          <label>Blood group<input data-field="bloodGroup" readonly></label>
+          <label>Phone number<input data-field="phone" readonly></label>
+          <label>Email address<input data-field="email" readonly></label>
+          <label>Location<input data-field="location" readonly></label>
+          <label>Government ID<input data-field="govid" readonly></label>
+          <label>Medical insurance<input data-field="insurance" readonly></label>
+          <label>Allergies<input data-field="allergy" readonly></label>
+          <label>Current medications<input data-field="medications" readonly></label>
+          <label>Medical history<input data-field="history" readonly></label>
+          <label>Emergency contact<input data-field="emergency" readonly></label>
+          <label class="wide">Address<input data-field="address" readonly></label>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- Mobile nav -->
+  <!-- SaaS Mobile Bottom Navigation -->
   <nav class="mobile-bottom-nav">
-    <div class="mobile-bottom-nav-inner">
-      <a href="dashboard.html" class="mobile-nav-item"><span class="icon">⌂</span><span>Home</span></a>
-      <a href="records.html" class="mobile-nav-item"><span class="icon">▤</span><span>Records</span></a>
-      <a href="upload.html" class="mobile-nav-item"><span class="icon">＋</span><span>Upload</span></a>
-      <a href="medications.html" class="mobile-nav-item"><span class="icon">✓</span><span>Routine</span></a>
-      <a href="profile.html" class="mobile-nav-item active"><span class="icon">◉</span><span>Profile</span></a>
-    </div>
+    <a href="dashboard.html" class="nav-item">
+      <span class="nav-icon">⊞</span>
+      <span>Home</span>
+    </a>
+    <a href="timeline.html" class="nav-item">
+      <span class="nav-icon">⏳</span>
+      <span>Timeline</span>
+    </a>
+    <a href="inventory.html" class="nav-item">
+      <span class="nav-icon">📦</span>
+      <span>Cabinet</span>
+    </a>
+    <a href="records.html" class="nav-item">
+      <span class="nav-icon">📋</span>
+      <span>Records</span>
+    </a>
+    <a href="profile.html" class="nav-item active">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
+    </a>
   </nav>
 
+  <!-- Floating Medi-AI Companion Trigger -->
+  <a href="ai-companion.html" class="floating-ai-btn">
+    <span>✦</span> Ask Medi-AI
+  </a>
+
   <script src="js/i18n.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/ai-companion.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

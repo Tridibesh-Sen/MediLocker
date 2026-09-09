@@ -6,6 +6,7 @@ import { uploadMiddleware } from '../../middlewares/upload';
 const router = Router();
 
 router.post('/chat', authenticate, AIController.chat);
+router.post('/companion-query', authenticate, AIController.chat);
 router.post('/scan-foil', authenticate, uploadMiddleware.single('file'), AIController.scanFoil);
 
 export const aiRoutes = router;

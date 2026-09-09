@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="ml-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#514267"/>
+      <stop offset="100%" stop-color="#2a2037"/>
+    </linearGradient>
+    <linearGradient id="ml-peach" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5e4d5"/>
+      <stop offset="100%" stop-color="#ebd3bf"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Squircle -->
+  <rect width="64" height="64" rx="18" fill="url(#ml-grad)"/>
+  <!-- Lock Arch / Shackle -->
+  <path d="M23 27V19C23 14.029 27.029 10 32 10C36.971 10 41 14.029 41 19V27" stroke="url(#ml-peach)" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Locker Body -->
+  <rect x="15" y="25" width="34" height="27" rx="8" fill="#fffdfa" stroke="#e8e0ee" stroke-width="1.5"/>
+  <!-- Centered Medical Cross -->
+  <rect x="29" y="31" width="6" height="15" rx="2" fill="#514267"/>
+  <rect x="24.5" y="35.5" width="15" height="6" rx="2" fill="#514267"/>
+  <circle cx="32" cy="38.5" r="1.5" fill="#f2dfd0"/>
+</svg>

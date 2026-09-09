@@ -1,45 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>MediLocker — Medical Records & Chronological Timeline</title>
+  <title>MediLocker — Medical Records</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="app-page patient-dashboard patient-records">
-  <!-- Gov topbar -->
-  <div class="gov-topbar">
-    <div class="gov-topbar-inner">
-      <div class="gov-left">
-        <span class="gov-flag"><span></span><span></span><span></span></span>
-        <strong class="gov-title">भारत सरकार | Government of India</strong>
-        <span class="gov-sub">National Health Authority · ABDM DigiLocker</span>
-      </div>
-      <div class="gov-right">
-        <div class="accessibility-ctrls">
-          <button type="button" class="font-btn" data-resize="dec" title="Decrease font">A-</button>
-          <button type="button" class="font-btn active" data-resize="norm" title="Normal font">A</button>
-          <button type="button" class="font-btn" data-resize="inc" title="Increase font">A+</button>
-        </div>
-        <a href="#mainContent" class="skip-link">Skip to main</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Header -->
   <header class="app-header">
-    <a class="brand" href="dashboard.html">
-      <span class="brand-mark">M</span>
-      <div>
-        <span>Medi<span>Locker</span></span>
-        <small class="brand-tagline">Sovereign Health DigiLocker</small>
-      </div>
-    </a>
+    <a class="brand" href="dashboard.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
     <div class="app-header-right">
-      <button class="location-btn" id="locationBtn">⌖ <span>Set location</span></button>
+      <button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button>
       <select id="languageSelect">
         <option value="en">English</option>
         <option value="bn">বাংলা</option>
@@ -58,115 +33,82 @@
       <div class="patient-mini">
         <div class="avatar" data-user-initials>U</div>
         <strong data-user-name>User</strong>
-        <small>Patient account</small>
+        <small data-i18n="patientAccount">Patient account</small>
       </div>
       <nav class="side-nav">
-        <a href="dashboard.html">⌂ Dashboard</a>
-        <a href="profile.html">◉ My profile</a>
-        <a class="active" href="records.html">▤ Medical records</a>
-        <a href="upload.html">＋ Upload documents</a>
-        <a href="medications.html">✓ Medication to-do</a>
+        <a href="dashboard.html">⌂ <span data-i18n="dashboard">Dashboard</span></a>
+        <a href="timeline.html">⏳ <span data-i18n="timelinePage">Health timeline</span></a>
+        <a class="active" href="records.html">▤ <span data-i18n="recordsPage">Medical records</span></a>
+        <a href="medications.html">✓ <span data-i18n="todoPage">Medication to-do</span></a>
+        <a href="inventory.html">⊞ <span data-i18n="inventoryPage">Medicine cabinet</span></a>
+        <a href="ai-companion.html">✦ <span data-i18n="aiCompanionPage">Medi-AI assistant</span></a>
+        <a href="tests.html">⚗ <span data-i18n="testsPage">Lab tests & vitals</span></a>
+        <a href="delegation.html">🛡 <span data-i18n="delegationPage">Consent & access</span></a>
+        <a href="upload.html">＋ <span data-i18n="uploadPage">Upload documents</span></a>
+        <a href="profile.html">◉ <span data-i18n="profilePage">My profile</span></a>
       </nav>
       <div class="side-bottom">
-        <a href="login.html">↪ Switch portal</a>
+        <a href="login.html">↪ <span data-i18n="switchPortal">Switch portal</span></a>
       </div>
     </aside>
 
-    <main class="app-main" id="mainContent">
+    <main class="app-main">
       <div class="page-title">
         <div>
-          <span class="eyebrow">DIGILOCKER ISSUED & UPLOADED VAULT</span>
-          <h1>Your sovereign medical vault.</h1>
-          <p>Organized chronologically by consultation date. Authenticated by DigiLocker & ABDM healthcare providers.</p>
+          <span class="eyebrow">DIGITAL MEDICAL VAULT</span>
+          <h1>Your medical records.</h1>
+          <p>Prescriptions, diagnostic investigation reports, and clinical documents securely stored with AES-256 envelope encryption.</p>
         </div>
         <a class="primary-btn" href="upload.html">Upload new ↗</a>
       </div>
 
-      <!-- Document tabs -->
-      <div class="digi-tabs">
-        <button class="digi-tab-btn active" type="button" data-vault="all">
-          <span>🏛 All Documents</span>
-        </button>
-        <button class="digi-tab-btn" type="button" data-vault="issued">
-          <span>✓ Issued by Doctors & Hospitals</span>
-        </button>
-        <button class="digi-tab-btn" type="button" data-vault="drive">
-          <span>☁ DigiLocker Drive (Uploaded)</span>
-        </button>
-      </div>
-
-      <!-- Filters -->
       <div class="filter-bar">
-        <button class="filter active" data-filter="all">All Records</button>
-        <button class="filter" data-filter="PRESCRIPTION">Prescriptions</button>
-        <button class="filter" data-filter="LAB_REPORT">Lab Reports</button>
-        <button class="filter" data-filter="SCAN">Scans & Radiology</button>
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="prescription">Prescriptions</button>
+        <button class="filter" data-filter="report">Reports</button>
       </div>
 
-      <!-- Timeline container -->
-      <div id="timelineContainer" style="margin-top: 24px;">
-        <div id="timelineLoading" style="padding: 24px 0; color: #7c7480;">
-          Loading your medical timeline...
+      <div class="records-list" id="recordsListContainer">
+        <div class="empty-state" id="recordsEmptyState" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:48px 24px;text-align:center;width:100%;">
+          <div class="empty-icon" style="font-size:40px;margin-bottom:12px;">▤</div>
+          <h3 style="font:800 20px 'Manrope';margin:0 0 8px;">No medical records yet</h3>
+          <p style="color:var(--muted);max-width:460px;margin:0 auto 20px;font-size:14px;">Upload your prescriptions, lab reports, or discharge summaries to securely store and index them in your sovereign vault.</p>
+          <a class="primary-btn" href="upload.html" style="display:inline-block;">Upload Your First Record ↗</a>
         </div>
       </div>
-
-      <!-- Empty state -->
-      <section class="empty-state hidden" id="emptyRecordsState">
-        <div class="empty-icon">▤</div>
-        <h2>No medical records yet</h2>
-        <p>Your locker is currently empty. Upload your first prescription or pathology report to begin your chronological medical story.</p>
-        <a class="primary-btn" href="upload.html">Upload your first record ↗</a>
-      </section>
     </main>
   </div>
 
-  <!-- Detail modal -->
-  <div class="modal hidden" id="recordDetailModal">
-    <div class="modal-card" style="max-width: 640px; text-align: left;">
-      <button class="modal-close" id="closeRecordModal" type="button">&times;</button>
-      
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
-        <div>
-          <span class="timeline-date-chip" id="modalRecordDate">05092026</span>
-          <h2 id="modalRecordTitle" style="margin:4px 0; font-size:22px;">Doctor Prescription</h2>
-          <p id="modalRecordDoctor" style="margin:0; font-size:13px; color:#6e6475;">Consultation with Dr. Sharma</p>
-        </div>
-        <a id="modalDownloadLink" href="#" target="_blank" class="primary-btn ghost" style="padding:8px 12px; font-size:12px;">
-          View Document ↗
-        </a>
-      </div>
-
-      <div id="modalDiagnosesSection" style="margin-bottom: 16px;">
-        <small style="font-weight:800; color:#877c8d; letter-spacing:0.08em; display:block; margin-bottom:6px;">DIAGNOSES</small>
-        <div id="modalDiagnosesList" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-      </div>
-
-      <div id="modalMedicationsSection" style="margin-bottom: 16px;">
-        <small style="font-weight:800; color:#877c8d; letter-spacing:0.08em; display:block; margin-bottom:6px;">PRESCRIBED MEDICINES</small>
-        <div id="modalMedicationsList" style="display:grid; gap:8px;"></div>
-      </div>
-
-      <div id="modalNotesSection" style="margin-bottom: 16px;">
-        <small style="font-weight:800; color:#877c8d; letter-spacing:0.08em; display:block; margin-bottom:6px;">DOCTOR ADVICE & CLINICAL NOTES</small>
-        <p id="modalNotesText" style="font-size:13.5px; color:#2c2730; background:#fbf9fc; padding:12px; border-radius:10px; border:1px solid #ebe4ef; margin:0;"></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Mobile nav -->
+  <!-- SaaS Mobile Bottom Navigation -->
   <nav class="mobile-bottom-nav">
-    <div class="mobile-bottom-nav-inner">
-      <a href="dashboard.html" class="mobile-nav-item"><span class="icon">⌂</span><span>Home</span></a>
-      <a href="records.html" class="mobile-nav-item active"><span class="icon">▤</span><span>Records</span></a>
-      <a href="upload.html" class="mobile-nav-item"><span class="icon">＋</span><span>Upload</span></a>
-      <a href="medications.html" class="mobile-nav-item"><span class="icon">✓</span><span>Routine</span></a>
-      <a href="profile.html" class="mobile-nav-item"><span class="icon">◉</span><span>Profile</span></a>
-    </div>
+    <a href="dashboard.html" class="nav-item">
+      <span class="nav-icon">⊞</span>
+      <span>Home</span>
+    </a>
+    <a href="timeline.html" class="nav-item">
+      <span class="nav-icon">⏳</span>
+      <span>Timeline</span>
+    </a>
+    <a href="inventory.html" class="nav-item">
+      <span class="nav-icon">📦</span>
+      <span>Cabinet</span>
+    </a>
+    <a href="records.html" class="nav-item active">
+      <span class="nav-icon">📋</span>
+      <span>Records</span>
+    </a>
+    <a href="ai-companion.html" class="nav-item">
+      <span class="nav-icon">✦</span>
+      <span>Medi-AI</span>
+    </a>
   </nav>
 
+  <!-- Floating Medi-AI Companion Trigger -->
+  <a href="ai-companion.html" class="floating-ai-btn">
+    <span>✦</span> Ask Medi-AI
+  </a>
+
   <script src="js/i18n.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/ai-companion.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

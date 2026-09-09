@@ -21,12 +21,17 @@ export class AuthService {
    * Register a new Patient, Doctor, or Hospital
    */
   static async signup(data: any) {
-    const existing = await prisma.user.findUnique({
-      where: { email: data.email.toLowerCase() },
+    const cleanEmail = String(data.email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      throw new AppError('Valid email address is required.', 400);
+    }
+
+    const existing = await prisma.user.findFirst({
+      where: { email: cleanEmail },
     }).catch(() => null);
 
     if (existing) {
-      throw new AppError('An account with this email already exists.', 409);
+      throw new AppError(`An account with email "${cleanEmail}" is already registered (Associated Unit ID: ${existing.medilockerId}). Duplicate accounts for the same email are not allowed. Please sign in.`, 409);
     }
 
     // Generate unique 9-digit MediLocker Unit ID
@@ -65,16 +70,17 @@ export class AuthService {
       await prisma.patientProfile.create({
         data: {
           userId: user.id,
-          fullName: data.name,
+          fullName: data.fullName || data.name || 'Patient',
           dob: data.dob ? new Date(data.dob) : null,
           gender: data.gender,
-          bloodGroup: data.blood,
-          insuranceProvider: data.insurance,
-          baselineAllergies: data.allergy,
-          baselineMedications: data.medications,
-          medicalHistory: data.history,
-          emergencyContactName: data.emergency,
-          addressLine: data.address,
+          bloodGroup: data.bloodGroup || data.blood,
+          insuranceProvider: data.insuranceProvider || data.insurance,
+          baselineAllergies: data.baselineAllergies || data.allergy,
+          baselineMedications: data.baselineMedications || data.medications,
+          medicalHistory: data.medicalHistory || data.history,
+          emergencyContactName: data.emergencyContactName || data.emergency,
+          emergencyContactPhone: data.emergencyContactPhone,
+          addressLine: data.addressLine || data.address,
           city: data.city,
           state: data.state,
           pincode: data.pincode,
@@ -84,19 +90,19 @@ export class AuthService {
       await prisma.doctorProfile.create({
         data: {
           userId: user.id,
-          fullName: data.name,
+          fullName: data.fullName || data.name || 'Doctor',
           professionalEmail: data.email.toLowerCase(),
           phone: data.phone,
-          institutionalDoctorId: data.doctorId,
+          institutionalDoctorId: data.institutionalDoctorId || data.doctorId || `DOC-${Date.now().toString().slice(-6)}`,
           registrationNumber: data.registrationNumber,
-          specialization: data.specialization,
+          specialization: data.specialization || 'General Medicine',
           registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
-          yearsExperience: Number(data.experience) || 0,
-          clinicName: data.clinicName,
-          clinicVerificationRef: data.clinicVerification,
-          clinicAddress: data.address,
-          city: data.city,
-          state: data.state,
+          yearsExperience: Number(data.yearsExperience || data.experience) || 0,
+          clinicName: data.clinicName || 'Clinical Practice',
+          clinicVerificationRef: data.clinicVerificationRef || data.clinicVerification,
+          clinicAddress: data.clinicAddress || data.address || 'Medical Facility',
+          city: data.city || 'City',
+          state: data.state || 'State',
           verificationStatus: 'PENDING_VERIFICATION',
         },
       });
@@ -189,36 +195,96 @@ export class AuthService {
   }
 
   /**
-   * Authenticate via Email or Unit ID + MPIN
+   * Authenticate via Email + Unit ID
    */
-  static async login(identifier: string, roleParam: any, mpin?: string) {
-    const cleanId = String(identifier || '').trim();
-    if (!cleanId) {
-      throw new AppError('Email or MediLocker Unit ID is required.', 400);
+  static async login(
+    params: { email?: string; medilockerId?: string; identifier?: string; role?: any; mpin?: string } | string,
+    roleParam?: any,
+    mpinParam?: string
+  ) {
+    let email = '';
+    let medilockerId = '';
+    let roleUpper: UserRole = UserRole.PATIENT;
+    let mpin: string | undefined;
+
+    if (typeof params === 'object') {
+      email = String(params.email || '').trim().toLowerCase();
+      medilockerId = String(params.medilockerId || '').trim().toUpperCase();
+      const identifier = String(params.identifier || '').trim();
+      roleUpper = String(params.role || 'PATIENT').toUpperCase() as UserRole;
+      mpin = params.mpin;
+
+      if (!email && identifier.includes('@')) {
+        email = identifier.toLowerCase();
+      }
+      if (!medilockerId && identifier.toUpperCase().startsWith('ML-')) {
+        medilockerId = identifier.toUpperCase();
+      }
+    } else {
+      const cleanId = String(params || '').trim();
+      if (cleanId.includes('@')) {
+        email = cleanId.toLowerCase();
+      } else if (cleanId.toUpperCase().startsWith('ML-')) {
+        medilockerId = cleanId.toUpperCase();
+      } else {
+        email = cleanId.toLowerCase();
+      }
+      roleUpper = String(roleParam || 'PATIENT').toUpperCase() as UserRole;
+      mpin = mpinParam;
     }
 
-    const roleUpper = String(roleParam || 'PATIENT').toUpperCase() as UserRole;
+    let user: any = null;
 
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: cleanId.toLowerCase() },
-          { medilockerId: cleanId.toUpperCase() },
-        ],
-      },
-      include: {
-        patientProfile: true,
-        doctorProfile: true,
-        hospitalProfile: true,
-      },
-    });
+    // Both email and Unit ID provided: STRICT 2-WAY CHECK
+    if (email && medilockerId) {
+      const userByEmail = await prisma.user.findUnique({
+        where: { email },
+        include: {
+          patientProfile: true,
+          doctorProfile: true,
+          hospitalProfile: true,
+        },
+      });
 
-    if (!user) {
-      throw new AppError('Invalid credentials. Check your email or Unit ID.', 401);
+      if (!userByEmail) {
+        throw new AppError(`No registered account found with email "${email}". Please verify your email or sign up.`, 401);
+      }
+
+      if (userByEmail.medilockerId.toUpperCase() !== medilockerId.toUpperCase()) {
+        throw new AppError(`Unit ID mismatch: The provided Unit ID (${medilockerId}) does not match the account associated with email ${email}.`, 401);
+      }
+
+      user = userByEmail;
+    } else if (email) {
+      user = await prisma.user.findUnique({
+        where: { email },
+        include: {
+          patientProfile: true,
+          doctorProfile: true,
+          hospitalProfile: true,
+        },
+      });
+      if (!user) {
+        throw new AppError(`No registered account found with email "${email}".`, 401);
+      }
+    } else if (medilockerId) {
+      user = await prisma.user.findUnique({
+        where: { medilockerId },
+        include: {
+          patientProfile: true,
+          doctorProfile: true,
+          hospitalProfile: true,
+        },
+      });
+      if (!user) {
+        throw new AppError(`No registered account found with Unit ID "${medilockerId}".`, 401);
+      }
+    } else {
+      throw new AppError('Email address and Unique Unit ID are required to sign in.', 400);
     }
 
     if (user.role !== roleUpper) {
-      throw new AppError(`This account belongs to the ${user.role} portal. Please select the correct portal.`, 403);
+      throw new AppError(`This account is registered under the ${user.role} portal. Please select the correct portal tab.`, 403);
     }
 
     // Verify MPIN if configured
@@ -257,11 +323,11 @@ export class AuthService {
         email: user.email,
         name,
         role: user.role.toLowerCase(),
-        bloodGroup: user.patientProfile?.bloodGroup || 'O+',
+        bloodGroup: user.patientProfile?.bloodGroup || 'Not specified',
         allergies: user.patientProfile?.baselineAllergies ? [user.patientProfile.baselineAllergies] : [],
         chronicConditions: user.patientProfile?.medicalHistory ? [user.patientProfile.medicalHistory] : [],
         emergencyContact: {
-          name: user.patientProfile?.emergencyContactName || 'Family Member',
+          name: user.patientProfile?.emergencyContactName || 'Not configured',
           phone: user.phone,
           relation: 'Family',
         },
@@ -477,7 +543,7 @@ export class AuthService {
       name,
       role: user.role.toLowerCase(),
       phone: user.phone,
-      bloodGroup: user.patientProfile?.bloodGroup || 'O+',
+      bloodGroup: user.patientProfile?.bloodGroup || 'Not specified',
       allergies: user.patientProfile?.baselineAllergies
         ? user.patientProfile.baselineAllergies.split(',').map((s) => s.trim()).filter(Boolean)
         : [],

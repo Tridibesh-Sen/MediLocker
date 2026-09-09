@@ -6,7 +6,7 @@ import { AppError } from '../../middlewares/errorHandler';
 export class AIController {
   static async chat(req: Request, res: Response, next: NextFunction) {
     try {
-      const { message } = req.body;
+      const message = req.body.message || req.body.query;
       if (!message || typeof message !== 'string') {
         throw new AppError('Message string is required.', 400);
       }
@@ -19,21 +19,70 @@ export class AIController {
         where: { patientId: req.user!.userId },
       }).catch(() => []);
 
+      const prescribedMeds = await prisma.prescribedMedication.findMany({
+        where: { patientId: req.user!.userId },
+      }).catch(() => []);
+
+      const dailyTodos = await prisma.dailyTodoItem.findMany({
+        where: { patientId: req.user!.userId },
+      }).catch(() => []);
+
+      const userAllergies = patient?.baselineAllergies
+        ? patient.baselineAllergies.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : [];
+      const userConditions = patient?.chronicConditions?.length
+        ? patient.chronicConditions
+        : patient?.medicalHistory
+        ? patient.medicalHistory.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : [];
+
+      const activePrescribedList: Array<{ medicineName: string; activeSalt?: string; dosage?: string; frequency?: string }> = [];
+
+      prescribedMeds.forEach((m) => {
+        activePrescribedList.push({
+          medicineName: m.medicineName,
+          activeSalt: m.activeSalt || undefined,
+          dosage: m.dosage,
+          frequency: m.frequency,
+        });
+      });
+
+      dailyTodos.forEach((td) => {
+        if (!activePrescribedList.some((x) => td.taskLabel.toLowerCase().includes(x.medicineName.toLowerCase()))) {
+          activePrescribedList.push({
+            medicineName: td.taskLabel,
+            frequency: td.timeSlot,
+          });
+        }
+      });
+
+      if (patient?.baselineMedications) {
+        patient.baselineMedications.split(',').forEach((medStr) => {
+          const trimmed = medStr.trim();
+          if (trimmed && !activePrescribedList.some((x) => x.medicineName.toLowerCase() === trimmed.toLowerCase())) {
+            activePrescribedList.push({
+              medicineName: trimmed,
+            });
+          }
+        });
+      }
+
       const clinicalContext = {
         fullName: patient?.fullName || 'Patient',
         isPregnant: patient?.pregnancyStatus || false,
         recentAlcohol: patient?.alcoholUse || false,
-        knownAllergies: patient?.baselineAllergies ? [patient.baselineAllergies] : [],
-        chronicConditions: patient?.chronicConditions || [],
+        knownAllergies: userAllergies,
+        chronicConditions: userConditions,
         homeSupplies: homeSupplies.map((h) => ({
           name: h.medicineName,
           activeSalt: h.activeSalt || undefined,
           quantity: h.quantityAvailable,
         })),
+        alreadyPrescribedMedications: activePrescribedList,
       };
 
       const result = await AIService.chatWithCompanion(message, clinicalContext);
-      res.status(200).json({ success: true, data: result });
+      res.status(200).json({ success: true, data: result, response: result.response });
     } catch (error) {
       next(error);
     }

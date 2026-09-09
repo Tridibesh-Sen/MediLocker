@@ -119,24 +119,36 @@ export class InventoryService {
       barcodeGtin?: string;
       batchNumber?: string;
       scanMethod?: ScanMethod;
+      activeSalt?: string;
+      aiCategory?: string;
     }
   ) {
-    // Automatic AI drug categorization
-    const aiClassification = await AIService.categorizeMedicine(data.medicineName);
+    let activeSalt = data.activeSalt;
+    let aiCategory = data.aiCategory;
+    let aiUsesDescription: string | undefined;
+    let aiPrecautions: string | undefined;
+
+    if (!activeSalt || !aiCategory) {
+      const aiClassification = await AIService.categorizeMedicine(data.medicineName);
+      activeSalt = activeSalt || aiClassification.activeSalt;
+      aiCategory = aiCategory || aiClassification.aiCategory;
+      aiUsesDescription = aiClassification.aiUsesDescription;
+      aiPrecautions = aiClassification.aiPrecautions;
+    }
 
     const created = await prisma.medicineInventoryHome.create({
       data: {
         patientId: userId,
         medicineName: data.medicineName,
-        activeSalt: aiClassification.activeSalt,
+        activeSalt: activeSalt || null,
         quantityAvailable: data.quantity,
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
         barcodeGtin: data.barcodeGtin,
         batchNumber: data.batchNumber,
         scanMethod: data.scanMethod || ScanMethod.MANUAL,
-        aiCategory: aiClassification.aiCategory,
-        aiUsesDescription: aiClassification.aiUsesDescription,
-        aiPrecautions: aiClassification.aiPrecautions,
+        aiCategory: aiCategory || null,
+        aiUsesDescription: aiUsesDescription,
+        aiPrecautions: aiPrecautions,
       },
     });
 
