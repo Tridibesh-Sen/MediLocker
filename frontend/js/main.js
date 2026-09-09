@@ -10,6 +10,36 @@
   const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const initials=n=>(n||'User').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
   const currentT=()=>window.T?.[localStorage.getItem('medilockerLanguage')||'en']||window.T?.en||{};
+  const getBackendBase=()=>{
+    if(window.MEDILOCKER_API_BASE)return window.MEDILOCKER_API_BASE.replace(/\/+$/,'');
+    const saved=localStorage.getItem('medilockerBackendUrl');
+    if(saved)return saved.replace(/\/+$/,'');
+    if(location.hostname==='localhost'||location.hostname==='127.0.0.1')return '';
+    return window.__MEDILOCKER_DEFAULT_BACKEND__?window.__MEDILOCKER_DEFAULT_BACKEND__.replace(/\/+$/,''):'';
+  };
+  const apiUrl=(path)=>`${getBackendBase()}${path.startsWith('/')?path:'/'+path}`;
+
+  window.configureBackendUrl=function(reason){
+    const current=getBackendBase()||'(relative / same-origin)';
+    const msg=(reason?reason+'\n\n':'')+
+      'MediLocker Backend API Configuration\n\n'+
+      'Current Backend URL: '+current+'\n\n'+
+      'Enter your Render backend URL (e.g. https://your-backend.onrender.com):';
+    const input=prompt(msg,getBackendBase()||'https://');
+    if(input!==null){
+      const clean=input.trim().replace(/\/+$/,'');
+      if(clean&&clean!=='https://'){
+        localStorage.setItem('medilockerBackendUrl',clean);
+        alert('Backend URL saved: '+clean+'\n\nReloading page…');
+        location.reload();
+      }else{
+        localStorage.removeItem('medilockerBackendUrl');
+        alert('Backend URL reset to default.\n\nReloading page…');
+        location.reload();
+      }
+    }
+  };
+
 
   function bindLanguage(){
     const s=document.getElementById('languageSelect');
@@ -94,7 +124,7 @@
       if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Authenticating with Supabase…';}
 
       try{
-        const res=await fetch('/api/v1/auth/login',{
+        const res=await fetch(apiUrl('/api/v1/auth/login'),{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -115,7 +145,13 @@
 
         alert(data.error||data.message||'Authentication failed. Invalid email or Unit ID.');
       }catch(err){
-        alert('Server error: Unable to connect to Supabase database. Please check your backend connection.');
+        if(location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'&&!localStorage.getItem('medilockerBackendUrl')){
+          if(confirm('Server error: Unable to connect to backend at '+location.origin+'\n\nYour frontend is hosted on Vercel. Would you like to configure your Render Backend URL now?')){
+            window.configureBackendUrl();
+          }
+        }else{
+          alert('Server error: Unable to connect to backend at '+(getBackendBase()||location.origin)+'. Please check your backend status and connection.');
+        }
       }finally{
         if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=oldBtnText;}
       }
@@ -201,7 +237,7 @@
       }
 
       try{
-        const res=await fetch('/api/v1/auth/signup',{
+        const res=await fetch(apiUrl('/api/v1/auth/signup'),{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify(payload)
@@ -272,7 +308,7 @@
     };
 
     try{
-      const res=await fetch('/api/v1/auth/me',{headers:{Authorization:`Bearer ${token}`}});
+      const res=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
         alert('Session expired or server unreachable. Please sign in again.');
         location.href='login.html';
@@ -292,7 +328,7 @@
     const dashMeds=document.getElementById('dashMedsCount');
     if(dashMeds){
       try{
-        const todoRes=await fetch('/api/v1/todo/today',{headers:{Authorization:`Bearer ${token}`}});
+        const todoRes=await fetch(apiUrl('/api/v1/todo/today'),{headers:{Authorization:`Bearer ${token}`}});
         const todoData=await todoRes.json();
         const tasks=todoData.data?.tasks||todoData.tasks||[];
         dashMeds.textContent=`${tasks.length} Active`;
@@ -308,7 +344,7 @@
     const token=getToken();
 
     try{
-      const res=await fetch('/api/v1/records',{headers:{Authorization:`Bearer ${token}`}});
+      const res=await fetch(apiUrl('/api/v1/records'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
         container.innerHTML=`<div class="empty-state" style="background:#fff;border:1px solid #cf4e4e;border-radius:18px;padding:48px 24px;text-align:center;width:100%;"><div class="empty-icon" style="font-size:40px;margin-bottom:12px;color:#cf4e4e;">⚠</div><h3 style="font:800 20px 'Manrope';margin:0 0 8px;color:#cf4e4e;">Server is down</h3><p style="color:var(--muted);max-width:460px;margin:0 auto 20px;font-size:14px;">Unable to fetch records from database. Please verify backend connection.</p></div>`;
         return;
@@ -354,7 +390,7 @@
       e.preventDefault();
       const unit=input.value.trim().toUpperCase();
       try{
-        const res=await fetch('/api/v1/delegation/request-access',{
+        const res=await fetch(apiUrl('/api/v1/delegation/request-access'),{
           method:'POST',
           headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
           body:JSON.stringify({patientMedilockerId:unit})
@@ -424,7 +460,7 @@
           fd.append('file',file);
           fd.append('documentType',docType.toUpperCase());
           fd.append('note',docNote);
-          const res=await fetch('/api/v1/records/upload',{
+          const res=await fetch(apiUrl('/api/v1/records/upload'),{
             method:'POST',
             headers:{Authorization:`Bearer ${token}`},
             body:fd
@@ -442,7 +478,7 @@
         }
 
         if(docNote){
-          const res=await fetch('/api/v1/records',{
+          const res=await fetch(apiUrl('/api/v1/records'),{
             method:'POST',
             headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
             body:JSON.stringify({
@@ -492,7 +528,7 @@
 
     let userAllergies=[];
     try{
-      const meRes=await fetch('/api/v1/auth/me',{headers:{Authorization:`Bearer ${token}`}});
+      const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
       const meData=await meRes.json();
       const u=meData.data||meData.user;
       userAllergies=(u?.allergies||[]).map(a=>String(a).toLowerCase().trim()).filter(Boolean);
@@ -500,7 +536,7 @@
 
     // Check today's adverse feeling from timeline
     try{
-      const timeRes=await fetch('/api/v1/timeline',{headers:{Authorization:`Bearer ${token}`}});
+      const timeRes=await fetch(apiUrl('/api/v1/timeline'),{headers:{Authorization:`Bearer ${token}`}});
       const timeData=await timeRes.json();
       const logs=timeData.data?.symptomSynopsis||timeData.symptomSynopsis||[];
       const todayStr=new Date().toISOString().split('T')[0];
@@ -529,7 +565,7 @@
 
     let tasks=[];
     try{
-      const res=await fetch('/api/v1/todo/today',{headers:{Authorization:`Bearer ${token}`}});
+      const res=await fetch(apiUrl('/api/v1/todo/today'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
         if(streak)streak.textContent='Server error: Could not load medication tasks from database.';
         return;
@@ -610,7 +646,7 @@
           const id=label?.dataset.id;
           if(id&&token){
             try{
-              const res=await fetch(`/api/v1/todo/${id}/toggle`,{method:'PATCH',headers:{Authorization:`Bearer ${token}`}});
+              const res=await fetch(apiUrl(`/api/v1/todo/${id}/toggle`),{method:'PATCH',headers:{Authorization:`Bearer ${token}`}});
               if(!res.ok)alert('Failed to update task status in database.');
             }catch(_){
               alert('Server is down. Failed to update task in database.');
@@ -642,7 +678,7 @@
     let symptomLogs=[];
 
     try{
-      const res=await fetch('/api/v1/timeline',{headers:{Authorization:`Bearer ${token}`}});
+      const res=await fetch(apiUrl('/api/v1/timeline'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
         if(timelineList)timelineList.innerHTML=`<div class="empty-state" style="border:1px solid #cf4e4e;"><div class="empty-icon" style="color:#cf4e4e;">⚠</div><h3 style="color:#cf4e4e;">Server is down</h3><p>Unable to connect to Supabase database.</p></div>`;
         return;
@@ -677,7 +713,7 @@
         btn.disabled=true;
         try{
           const score=feeling==='green'?5:feeling==='orange'?3:1;
-          const res=await fetch('/api/v1/todo/daily-feeling',{
+          const res=await fetch(apiUrl('/api/v1/todo/daily-feeling'),{
             method:'POST',
             headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
             body:JSON.stringify({feelingScore:score,severityColor:feeling.toUpperCase()})
@@ -726,7 +762,7 @@
     // Flagged allergies from user profile
     if(flaggedAllergiesEl){
       try{
-        const meRes=await fetch('/api/v1/auth/me',{headers:{Authorization:`Bearer ${token}`}});
+        const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
         const u=meData.data||meData.user;
         const allergies=u?.allergies||[];
         flaggedAllergiesEl.textContent=allergies.length?allergies.join(', '):'None';
@@ -771,7 +807,7 @@
 
     if(token){
       try{
-        const meRes=await fetch('/api/v1/auth/me',{headers:{Authorization:`Bearer ${token}`}});
+        const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
         const meData=await meRes.json();
         const u=meData.data||meData.user;
         userAllergies=(u?.allergies||[]).map(a=>String(a).toLowerCase().trim()).filter(Boolean);
@@ -862,7 +898,7 @@
       try{
         const fd=new FormData();
         fd.append('file',blob,'medicine_scan.jpg');
-        const res=await fetch('/api/v1/ai/scan-foil',{
+        const res=await fetch(apiUrl('/api/v1/ai/scan-foil'),{
           method:'POST',
           headers:{Authorization:`Bearer ${token}`},
           body:fd
@@ -934,7 +970,7 @@
       const code=barcodeInput?.value.trim();
       if(!code)return;
       try{
-        const res=await fetch(`/api/v1/inventory/home-supplies/barcode/${encodeURIComponent(code)}`,{
+        const res=await fetch(apiUrl(`/api/v1/inventory/home-supplies/barcode/${encodeURIComponent(code)}`),{
           headers:{Authorization:`Bearer ${token}`}
         });
         const data=await res.json();
@@ -971,7 +1007,7 @@
       }
 
       try{
-        const res=await fetch('/api/v1/inventory/home-supplies',{
+        const res=await fetch(apiUrl('/api/v1/inventory/home-supplies'),{
           method:'POST',
           headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
           body:JSON.stringify({
@@ -1002,7 +1038,7 @@
 
     let supplies=[];
     try{
-      const res=await fetch('/api/v1/inventory/home-supplies',{headers:{Authorization:`Bearer ${token}`}});
+      const res=await fetch(apiUrl('/api/v1/inventory/home-supplies'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
         if(container)container.innerHTML=`<div class="empty-state" style="border:1px solid #cf4e4e;grid-column:1/-1;"><div class="empty-icon" style="color:#cf4e4e;">⚠</div><h3 style="color:#cf4e4e;">Server is down</h3><p>Unable to fetch supplies from database.</p></div>`;
         return;
@@ -1120,7 +1156,7 @@
       if(submitBtn)submitBtn.disabled=true;
 
       try{
-        const res=await fetch('/api/v1/inventory/home-supplies',{
+        const res=await fetch(apiUrl('/api/v1/inventory/home-supplies'),{
           method:'POST',
           headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
           body:JSON.stringify({
@@ -1162,7 +1198,7 @@
 
     // Fetch live profile and live cabinet from DB
     if(token){
-      fetch('/api/v1/auth/me',{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.json()).then(data=>{
+      fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.json()).then(data=>{
         const u=data.data||data.user;
         if(u&&allergyContext){
           const hasAllergy=u.allergies&&u.allergies.length;
@@ -1170,7 +1206,7 @@
         }
       }).catch(_=>{});
 
-      fetch('/api/v1/inventory/home-supplies',{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.json()).then(data=>{
+      fetch(apiUrl('/api/v1/inventory/home-supplies'),{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.json()).then(data=>{
         const supplies=data.data||[];
         if(cabinetContext)cabinetContext.textContent=`🏠 Cabinet: ${supplies.length} items`;
       }).catch(_=>{});
@@ -1227,7 +1263,7 @@
       messages.scrollTop=messages.scrollHeight;
 
       try{
-        const res=await fetch('/api/v1/ai/companion-query',{
+        const res=await fetch(apiUrl('/api/v1/ai/companion-query'),{
           method:'POST',
           headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
           body:JSON.stringify({query:prompt})
@@ -1242,7 +1278,7 @@
         }
 
         // Fallback response with live database check
-        const meRes=await fetch('/api/v1/auth/me',{headers:{Authorization:`Bearer ${token}`}});
+        const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
         const meData=await meRes.json();
         const u=meData.data||meData.user;
         const allergies=u?.allergies?.join(', ')||'None documented';
@@ -1396,7 +1432,7 @@
 
     // Fetch reports and tests due from Supabase database
     try{
-      const res=await fetch('/api/v1/records',{headers:{Authorization:`Bearer ${token}`}});
+      const res=await fetch(apiUrl('/api/v1/records'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
         if(labContainer)labContainer.innerHTML=`<div class="empty-state" style="border:1px solid #cf4e4e;padding:24px;"><div class="empty-icon" style="color:#cf4e4e;">⚠</div><h3 style="color:#cf4e4e;">Server is down</h3><p>Could not fetch reports from database.</p></div>`;
         return;
@@ -1490,7 +1526,7 @@
 
     async function loadDelegations(){
       try{
-        const res=await fetch('/api/v1/delegation/patient-requests',{
+        const res=await fetch(apiUrl('/api/v1/delegation/patient-requests'),{
           headers:{Authorization:`Bearer ${token}`}
         });
         if(!res.ok)return;
@@ -1550,7 +1586,7 @@
               b.addEventListener('click',async()=>{
                 const id=b.dataset.id;
                 if(!confirm('Reject this access request?'))return;
-                await fetch('/api/v1/delegation/revoke',{
+                await fetch(apiUrl('/api/v1/delegation/revoke'),{
                   method:'POST',
                   headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
                   body:JSON.stringify({delegationId:id})
@@ -1598,7 +1634,7 @@
               b.addEventListener('click',async()=>{
                 const id=b.dataset.id;
                 if(!confirm('Immediately revoke this doctor\'s access to your medical records?'))return;
-                await fetch('/api/v1/delegation/revoke',{
+                await fetch(apiUrl('/api/v1/delegation/revoke'),{
                   method:'POST',
                   headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
                   body:JSON.stringify({delegationId:id})
@@ -1661,7 +1697,7 @@
     async function loadActivePatients(){
       if(!activeList)return;
       try{
-        const res=await fetch('/api/v1/delegation/doctor/active-patients',{
+        const res=await fetch(apiUrl('/api/v1/delegation/doctor/active-patients'),{
           headers:{Authorization:`Bearer ${token}`}
         });
         if(!res.ok)return;
@@ -1712,7 +1748,7 @@
       resultBox.innerHTML=`<div style="text-align:center;padding:24px;color:var(--muted);">Searching patient by Unit ID…</div>`;
 
       try{
-        const res=await fetch(`/api/v1/delegation/search-patient?medilockerId=${encodeURIComponent(unitId)}`,{
+        const res=await fetch(apiUrl(`/api/v1/delegation/search-patient?medilockerId=${encodeURIComponent(unitId)}`),{
           headers:{Authorization:`Bearer ${token}`}
         });
         const json=await res.json();
@@ -1775,7 +1811,7 @@
           if(reqBtn)reqBtn.disabled=true;
 
           try{
-            const reqRes=await fetch('/api/v1/delegation/create-request',{
+            const reqRes=await fetch(apiUrl('/api/v1/delegation/create-request'),{
               method:'POST',
               headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
               body:JSON.stringify({
@@ -1819,7 +1855,7 @@
               if(vBtn)vBtn.disabled=true;
 
               try{
-                const vRes=await fetch('/api/v1/delegation/verify-code',{
+                const vRes=await fetch(apiUrl('/api/v1/delegation/verify-code'),{
                   method:'POST',
                   headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
                   body:JSON.stringify({
@@ -1869,7 +1905,7 @@
       recordModalContent.innerHTML=`<div style="text-align:center;padding:48px;color:var(--muted);">Loading authorized patient records…</div>`;
 
       try{
-        const res=await fetch(`/api/v1/delegation/doctor/patient/${encodeURIComponent(patientIdOrUnit)}/full-data`,{
+        const res=await fetch(apiUrl(`/api/v1/delegation/doctor/patient/${encodeURIComponent(patientIdOrUnit)}/full-data`),{
           headers:{Authorization:`Bearer ${token}`}
         });
         const json=await res.json();
@@ -1999,10 +2035,27 @@
     }
   }
 
+  function bindBackendConfig(){
+    const btns=document.querySelectorAll('#backendConfigBtn');
+    btns.forEach(b=>{
+      const base=getBackendBase();
+      const statusText=b.querySelector('#backendStatusText');
+      if(base&&statusText){
+        statusText.textContent='API: Connected';
+        b.style.borderColor='var(--plum)';
+      }
+      b.addEventListener('click',e=>{
+        e.preventDefault();
+        window.configureBackendUrl();
+      });
+    });
+  }
+
   // DOM ready dispatcher
   document.addEventListener('DOMContentLoaded',()=>{
     bindLanguage();
     bindLocation();
+    bindBackendConfig();
     window.applyLanguage?.(localStorage.getItem('medilockerLanguage')||'en');
     bindLogout();
 
