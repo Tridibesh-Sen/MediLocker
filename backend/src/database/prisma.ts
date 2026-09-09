@@ -7,9 +7,24 @@ declare global {
   var prismaGlobal: PrismaClient | undefined;
 }
 
+const LIVE_SUPABASE_DB = 'postgresql://postgres:qLBHDWUwaMod4Cd0@db.mmgyamemhbecpytpibrr.supabase.co:5432/postgres';
+
+const resolveDatabaseUrl = () => {
+  const current = process.env.DATABASE_URL;
+  if (!current || current.includes('pnqubhvcvocytudlwbog') || current.includes('ep-sample-neon')) {
+    return LIVE_SUPABASE_DB;
+  }
+  return current;
+};
+
 export const prisma =
   global.prismaGlobal ||
   new PrismaClient({
+    datasources: {
+      db: {
+        url: resolveDatabaseUrl(),
+      },
+    },
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 

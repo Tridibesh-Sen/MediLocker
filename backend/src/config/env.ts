@@ -22,9 +22,9 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().default(''),
 
   // Supabase (Storage & Platform)
-  SUPABASE_URL: z.string().default(''),
-  SUPABASE_KEY: z.string().default(''),
-  SUPABASE_ANON_KEY: z.string().default(''),
+  SUPABASE_URL: z.string().default('https://mmgyamemhbecpytpibrr.supabase.co'),
+  SUPABASE_KEY: z.string().default('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODk2NDg0NSwiZXhwIjoyMTA0NTQwODQ1fQ.yodOY_3vL0eOfvUdv-IWHK9ZLytyUT0-grh8P5uEcfY'),
+  SUPABASE_ANON_KEY: z.string().default('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NjQ4NDUsImV4cCI6MjEwNDU0MDg0NX0.zMTXIwY7bLX2R7odpSkY0YDMq8297tiJbANsFfBjwLk'),
   SUPABASE_BUCKET: z.string().default('medical-records'),
 
   // Redis (Optional)
@@ -45,6 +45,12 @@ const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
   console.error('❌ Invalid environment variables:', parsed.error.format());
   process.exit(1);
+}
+
+if (parsed.data.SUPABASE_URL.includes('pnqubhvcvocytudlwbog')) {
+  parsed.data.SUPABASE_URL = 'https://mmgyamemhbecpytpibrr.supabase.co';
+  parsed.data.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NjQ4NDUsImV4cCI6MjEwNDU0MDg0NX0.zMTXIwY7bLX2R7odpSkY0YDMq8297tiJbANsFfBjwLk';
+  parsed.data.SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODk2NDg0NSwiZXhwIjoyMTA0NTQwODQ1fQ.yodOY_3vL0eOfvUdv-IWHK9ZLytyUT0-grh8P5uEcfY';
 }
 
 export const env = parsed.data;
