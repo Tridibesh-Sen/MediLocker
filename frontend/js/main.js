@@ -10,35 +10,15 @@
   const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const initials=n=>(n||'User').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
   const currentT=()=>window.T?.[localStorage.getItem('medilockerLanguage')||'en']||window.T?.en||{};
+  const DEFAULT_BACKEND_URL='https://medilocker-34ij.onrender.com';
   const getBackendBase=()=>{
     if(window.MEDILOCKER_API_BASE)return window.MEDILOCKER_API_BASE.replace(/\/+$/,'');
     const saved=localStorage.getItem('medilockerBackendUrl');
     if(saved)return saved.replace(/\/+$/,'');
     if(location.hostname==='localhost'||location.hostname==='127.0.0.1')return '';
-    return window.__MEDILOCKER_DEFAULT_BACKEND__?window.__MEDILOCKER_DEFAULT_BACKEND__.replace(/\/+$/,''):'';
+    return DEFAULT_BACKEND_URL;
   };
   const apiUrl=(path)=>`${getBackendBase()}${path.startsWith('/')?path:'/'+path}`;
-
-  window.configureBackendUrl=function(reason){
-    const current=getBackendBase()||'(relative / same-origin)';
-    const msg=(reason?reason+'\n\n':'')+
-      'MediLocker Backend API Configuration\n\n'+
-      'Current Backend URL: '+current+'\n\n'+
-      'Enter your Render backend URL (e.g. https://your-backend.onrender.com):';
-    const input=prompt(msg,getBackendBase()||'https://');
-    if(input!==null){
-      const clean=input.trim().replace(/\/+$/,'');
-      if(clean&&clean!=='https://'){
-        localStorage.setItem('medilockerBackendUrl',clean);
-        alert('Backend URL saved: '+clean+'\n\nReloading page…');
-        location.reload();
-      }else{
-        localStorage.removeItem('medilockerBackendUrl');
-        alert('Backend URL reset to default.\n\nReloading page…');
-        location.reload();
-      }
-    }
-  };
 
 
   function bindLanguage(){
@@ -145,13 +125,7 @@
 
         alert(data.error||data.message||'Authentication failed. Invalid email or Unit ID.');
       }catch(err){
-        if(location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'&&!localStorage.getItem('medilockerBackendUrl')){
-          if(confirm('Server error: Unable to connect to backend at '+location.origin+'\n\nYour frontend is hosted on Vercel. Would you like to configure your Render Backend URL now?')){
-            window.configureBackendUrl();
-          }
-        }else{
-          alert('Server error: Unable to connect to backend at '+(getBackendBase()||location.origin)+'. Please check your backend status and connection.');
-        }
+        alert(err.message||'Server error: Unable to connect to Supabase database. Please check your backend connection.');
       }finally{
         if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=oldBtnText;}
       }
@@ -2035,27 +2009,10 @@
     }
   }
 
-  function bindBackendConfig(){
-    const btns=document.querySelectorAll('#backendConfigBtn');
-    btns.forEach(b=>{
-      const base=getBackendBase();
-      const statusText=b.querySelector('#backendStatusText');
-      if(base&&statusText){
-        statusText.textContent='API: Connected';
-        b.style.borderColor='var(--plum)';
-      }
-      b.addEventListener('click',e=>{
-        e.preventDefault();
-        window.configureBackendUrl();
-      });
-    });
-  }
-
   // DOM ready dispatcher
   document.addEventListener('DOMContentLoaded',()=>{
     bindLanguage();
     bindLocation();
-    bindBackendConfig();
     window.applyLanguage?.(localStorage.getItem('medilockerLanguage')||'en');
     bindLogout();
 

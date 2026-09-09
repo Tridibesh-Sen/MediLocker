@@ -1,4 +1,14 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://medilocker-34ij.onrender.com/api/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://medilocker-34ij.onrender.com/uploads/:path*"
+    }
+  ],
   "cleanUrls": true,
   "trailingSlash": false
 }
