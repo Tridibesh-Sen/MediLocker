@@ -1,159 +1,127 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MediLocker — Hospital Institutional Portal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MediLocker — Hospital Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="provider-portal" data-provider-role="hospital">
-  <!-- Gov topbar -->
-  <div class="gov-topbar">
-    <div class="gov-topbar-inner">
-      <div class="gov-left">
-        <span class="gov-flag"><span></span><span></span><span></span></span>
-        <strong class="gov-title">भारत सरकार | Government of India</strong>
-        <span class="gov-sub">National Health Authority · ABDM DigiLocker</span>
-      </div>
-      <div class="gov-right">
-        <div class="accessibility-ctrls">
-          <button type="button" class="font-btn" data-resize="dec" title="Decrease font">A-</button>
-          <button type="button" class="font-btn active" data-resize="norm" title="Normal font">A</button>
-          <button type="button" class="font-btn" data-resize="inc" title="Increase font">A+</button>
-        </div>
-        <a href="#mainContent" class="skip-link">Skip to main</a>
-      </div>
+<body class="app-page provider-portal" data-provider-role="hospital">
+  <header class="app-header">
+    <a class="brand" href="index.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
+    <div class="app-header-right">
+      <button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button>
+      <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="bn">বাংলা</option>
+        <option value="hi">हिन्दी</option>
+        <option value="mr">मराठी</option>
+        <option value="ur">اردو</option>
+        <option value="pa">ਪੰਜਾਬੀ</option>
+        <option value="kn"><ctrl42>ಕನ್ನಡ</option>
+      </select>
+      <a href="index.html" class="signin" data-logout>Log out</a>
     </div>
-  </div>
+  </header>
 
-  <div class="app-shell" id="mainContent">
+  <div class="app-layout">
     <aside class="sidebar">
-      <a class="brand" href="index.html">
-        <span class="brand-mark">M</span>
-        <div>
-          <span>Medi<span>Locker</span></span>
-          <small class="brand-tagline">Sovereign Health DigiLocker</small>
-        </div>
-      </a>
-      <div class="user-mini">
-        <span class="user-avatar" data-provider-initials>HO</span>
-        <div>
-          <strong data-provider-name>Hospital</strong>
-          <small>Hospital · <span data-provider-unit>Unit ID</span></small>
-        </div>
+      <div class="patient-mini">
+        <div class="avatar" data-provider-initials>HO</div>
+        <strong data-provider-name>Hospital</strong>
+        <small>Hospital · <span data-provider-unit>Unit ID</span></small>
       </div>
       <nav class="side-nav">
-        <a class="active" href="hospital.html">⌂ Overview</a>
-        <a href="#intakeRoster">🏥 Admitted Patients</a>
-        <a href="#doctorAllotmentSection">👨‍⚕️ Doctor Allotments</a>
+        <a class="active" href="hospital.html">⌂ <span>Overview</span></a>
+        <a href="#patientSearch">▦ <span>Search patient</span></a>
       </nav>
       <div class="side-bottom">
-        <a href="login.html" data-logout>↪ Log out</a>
+        <a href="login.html?role=hospital">↪ <span>Switch portal</span></a>
       </div>
     </aside>
 
     <main class="app-main">
-      <header class="app-topbar">
+      <div class="page-title">
         <div>
-          <p class="eyebrow">HOSPITAL INSTITUTIONAL PORTAL</p>
+          <span class="eyebrow">HOSPITAL PORTAL</span>
           <h1>Care organization workspace.</h1>
-          <p>Admit patients via consent, manage bed allotment, and assign attending physicians.</p>
+          <p>Find a patient using their MediLocker Unique Unit ID for admissions and clinical coordination.</p>
         </div>
-        <span class="status-chip">● Licensed Healthcare Institution</span>
-      </header>
+        <span class="status-pill" style="background:var(--sage);color:#435740;">Institutional Account</span>
+      </div>
 
       <section class="provider-hero">
         <div>
-          <span class="eyebrow">INSTITUTIONAL ADMISSION & CONSENT</span>
-          <h2>Patient intake & doctor allotment.</h2>
-          <p>Upon patient admission, authorize records via 9-digit Unit ID & MPIN, then allot to the attending registered doctor.</p>
+          <span class="eyebrow" style="color:#b9a9c4;">PATIENT ACCESS</span>
+          <h2 style="font:800 32px 'Manrope';margin:10px 0;">Search patient by Unique Unit ID.</h2>
+          <p style="color:#d5cdda;font-size:16px;">Enter the Unit ID supplied by the patient to access emergency records, allergies, and diagnostic history.</p>
         </div>
-        <div style="display:flex; align-items:center;">
-          <button class="primary-btn" id="openHospitalIntakeBtn" style="background:#ffffff; color:#5c426d; font-weight:800;">
-            ＋ Admit Patient (Intake)
-          </button>
-        </div>
-      </section>
-
-      <!-- Admitted roster -->
-      <section class="panel" id="intakeRoster" style="margin-top: 28px;">
-        <div class="search-heading">
-          <div>
-            <p class="eyebrow">ADMITTED PATIENT ROSTER</p>
-            <h3>Authorized Hospital Inpatients</h3>
-          </div>
-          <span class="tag" style="background:#e0e7ff; color:#3730a3;">Institutional Allotment</span>
-        </div>
-
-        <div id="hospitalPatientsList" style="display:grid; gap:12px; margin-top:16px;">
-          <div style="padding:20px; background:#faf8fc; border-radius:14px; color:#7c7480; font-size:13.5px;">
-            No current admitted patients. Click <strong>Admit Patient</strong> to process intake with patient consent.
-          </div>
+        <div class="provider-stat">
+          <strong>01</strong>
+          <span>Active hospital session</span>
         </div>
       </section>
 
-      <!-- Doctor allotment -->
-      <section class="panel" id="doctorAllotmentSection" style="margin-top: 28px;">
-        <div class="search-heading">
+      <section class="profile-card" id="patientSearch" style="margin-top:30px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
           <div>
-            <p class="eyebrow">CLINICAL PRIVILEGE SCOPING</p>
-            <h3>Allot Patient to Registered Doctor</h3>
+            <span class="eyebrow">PATIENT LOOKUP</span>
+            <h3 style="font:800 24px 'Manrope';margin:4px 0 0;">Find patient</h3>
           </div>
-          <span class="tag">Least Privilege</span>
+          <span class="status-pill">Unit ID required</span>
         </div>
 
-        <form id="allotDoctorForm" style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end;">
-          <label>
-            <span style="display:block; font-size:13px; font-weight:700; margin-bottom:4px;">Select Admitted Patient</span>
-            <select id="allotPatientSelect" style="width:100%; padding:10px; border-radius:10px; border:1px solid #d8cfdf;">
-              <option value="">Choose patient...</option>
-            </select>
-          </label>
-
-          <label>
-            <span style="display:block; font-size:13px; font-weight:700; margin-bottom:4px;">Assign Attending Doctor</span>
-            <input type="text" id="allotDoctorId" placeholder="Doctor's MediLocker Unit ID (e.g. ML-DOC-123)" style="width:100%; padding:10px; border-radius:10px; border:1px solid #d8cfdf;">
-          </label>
-
-          <button type="submit" class="primary-btn" style="height:42px;">Assign Doctor ↗</button>
+        <form id="patientSearchForm" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+          <input id="patientUnitSearch" required placeholder="Enter patient Unit ID · e.g. ML-XXXX-XXXX" autocomplete="off" style="flex:1;min-width:260px;border:1px solid var(--line);border-radius:14px;padding:14px 18px;font:500 16px 'DM Sans',sans-serif;background:#fff;">
+          <button class="primary-btn" type="submit">Search patient ↗</button>
         </form>
+
+        <div id="patientSearchEmpty" class="empty-state compact">
+          <div class="empty-icon">⌕</div>
+          <h3>Ready to search</h3>
+          <p>Use the patient's exact MediLocker Unit ID. No sample patients are displayed automatically.</p>
+        </div>
+
+        <div id="patientSearchResult" class="patient-result hidden"></div>
       </section>
+
+      <!-- Active Authorized Patients Section -->
+      <section class="profile-card" id="activePatientsSection" style="margin-top:30px;">
+        <div class="card-topline">
+          <span>ACTIVE SESSIONS</span>
+          <span class="live-dot">● Sovereign Patient Consent</span>
+        </div>
+        <h3 style="font:800 24px 'Manrope';margin:10px 0 16px;">Currently Authorized Patients</h3>
+        <div id="activePatientsList">
+          <div class="empty-state compact">
+            <p style="margin:0;color:var(--muted);">No active patient consultations. Enter a patient Unit ID above to send an access request.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full Authorized Patient Inspection Modal -->
+      <div class="modal hidden" id="patientRecordModal">
+        <div class="modal-card" style="max-width:980px;width:95%;max-height:90vh;overflow-y:auto;text-align:left;padding:32px;">
+          <button class="modal-close" id="closePatientRecordModal">×</button>
+          <div id="patientRecordModalContent"></div>
+        </div>
+      </div>
+
+      <div class="emergency-box" style="margin-top:30px;background:#f5ece7;">
+        <span>ℹ</span>
+        <div>
+          <strong>Institutional Access Control</strong>
+          <p>This workspace operates under sovereign patient authorization. Patient records are unlocked exclusively for authorized care coordination.</p>
+        </div>
+      </div>
     </main>
   </div>
 
-  <!-- Intake modal -->
-  <div class="modal hidden" id="hospitalConsentModal">
-    <div class="modal-card" style="max-width: 480px; text-align: left;">
-      <button class="modal-close" id="closeHospitalModal" type="button">&times;</button>
-      <span class="eyebrow" style="color:#6b4d7e;">HOSPITAL INTAKE ADMISSION</span>
-      <h2 style="margin:4px 0 8px 0; font-size:22px;">Admit Patient to Hospital</h2>
-      <p style="margin:0 0 18px 0; font-size:13px; color:#6e6475;">
-        Intake requires the patient's 9-digit MediLocker Unit ID and the patient entering their master 6-digit MPIN.
-      </p>
-
-      <form id="hospitalIntakeForm">
-        <label style="display:block; margin-bottom:14px;">
-          <span style="display:block; font-size:13px; font-weight:700; margin-bottom:4px;">Patient 9-Digit Unit ID *</span>
-          <input type="text" id="intakeUnitId" required placeholder="ML-XXX-XXX-XXX" style="width:100%; padding:11px; border-radius:10px; border:1px solid #d8cfdf; text-transform:uppercase;">
-        </label>
-
-        <label style="display:block; margin-bottom:18px;">
-          <span style="display:block; font-size:13px; font-weight:700; margin-bottom:4px;">Patient 6-Digit MPIN (Entered by Patient) *</span>
-          <input type="password" id="intakeMpin" required maxlength="6" inputmode="numeric" placeholder="••••••" style="width:100%; padding:11px; border-radius:10px; border:1px solid #d8cfdf; text-align:center; font-size:18px; letter-spacing:0.2em;">
-        </label>
-
-        <button class="primary-btn full" type="submit" id="confirmIntakeBtn">
-          Verify MPIN & Authorize Admission ↗
-        </button>
-      </form>
-    </div>
-  </div>
-
   <script src="js/i18n.js"></script>
-  <script src="js/api.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

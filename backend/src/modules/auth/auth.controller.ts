@@ -26,8 +26,7 @@ export class AuthController {
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { email, medilockerId, identifier, role, mpin } = loginSchema.parse(req.body);
-      const targetIdentifier = identifier || medilockerId || email || '';
-      const result = await AuthService.login(targetIdentifier, role, mpin);
+      const result = await AuthService.login({ email, medilockerId, identifier, role, mpin });
       res.status(200).json({ success: true, ...result });
     } catch (error) {
       next(error);
@@ -85,7 +84,7 @@ export class AuthController {
   static async me(req: Request, res: Response, next: NextFunction) {
     try {
       const user = await AuthService.getMe(req.user!.userId);
-      res.status(200).json({ success: true, data: user });
+      res.status(200).json({ success: true, data: user, user });
     } catch (error) {
       next(error);
     }
@@ -94,7 +93,7 @@ export class AuthController {
   static async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await AuthService.updateProfile(req.user!.userId, req.body);
-      res.status(200).json({ success: true, data: result });
+      res.status(200).json({ success: true, data: result, user: result });
     } catch (error) {
       next(error);
     }

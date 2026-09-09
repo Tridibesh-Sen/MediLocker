@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { env } from './config/env';
@@ -104,7 +103,7 @@ app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/delegation', delegationRoutes);
 
 // Static frontend serving
-const frontendDir = path.resolve(process.cwd(), '../frontend');
+const frontendDir = path.resolve(__dirname, '../../frontend');
 app.use(express.static(frontendDir));
 
 // Catch-all 404

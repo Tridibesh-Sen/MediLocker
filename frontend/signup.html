@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>MediLocker — Sign Up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -8,35 +9,10 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="login-page signup-page">
-<!-- Gov topbar -->
-<div class="gov-topbar">
-  <div class="gov-topbar-inner">
-    <div class="gov-left">
-      <span class="gov-flag"><span></span><span></span><span></span></span>
-      <strong class="gov-title">भारत सरकार | Government of India</strong>
-      <span class="gov-sub">National Health Authority · ABDM DigiLocker</span>
-    </div>
-    <div class="gov-right">
-      <div class="accessibility-ctrls">
-        <button type="button" class="font-btn" data-resize="dec" title="Decrease font">A-</button>
-        <button type="button" class="font-btn active" data-resize="norm" title="Normal font">A</button>
-        <button type="button" class="font-btn" data-resize="inc" title="Increase font">A+</button>
-      </div>
-      <a href="#mainContent" class="skip-link">Skip to main</a>
-    </div>
-  </div>
-</div>
+<header class="site-header"><a class="brand" href="index.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
+<div class="header-actions"><button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button><select id="languageSelect"><option value="en">English</option><option value="bn">বাংলা</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option><option value="ur">اردو</option><option value="pa">ਪੰਜਾਬੀ</option><option value="kn">ಕನ್ನಡ</option></select></div></header>
 
-<!-- Header -->
-<header class="site-header"><a class="brand" href="index.html">
-  <span class="brand-mark">M</span>
-  <div>
-    <span>Medi<span>Locker</span></span>
-    <small class="brand-tagline">Sovereign Health DigiLocker</small>
-  </div>
-</a><div class="header-actions"><button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button><select id="languageSelect"><option value="en">English</option><option value="bn">বাংলা</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option><option value="ur">اردو</option><option value="pa">ਪੰਜਾਬੀ</option><option value="kn">ಕನ್ನಡ</option></select></div></header>
-
-<main class="login-shell signup-shell" id="mainContent">
+<main class="login-shell signup-shell">
 <section class="login-intro"><span class="eyebrow">04 / REGISTRATION</span><h1>Create your MediLocker.</h1><p>Choose the account type first. MediLocker uses a different registration form for patients, doctors and hospitals.</p></section>
 <section class="login-card signup-card">
 <div class="role-heading"><span class="eyebrow">ACCOUNT TYPE</span><h2>Who are you registering as?</h2></div>
@@ -47,7 +23,7 @@
 </div>
 
 <form id="signupForm" novalidate>
-<!-- Patient fields -->
+<!-- PATIENT FORM -->
 <div id="patientFields" class="role-fields">
 <div class="signup-section"><div class="section-kicker">PATIENT · IDENTITY</div><h3>Personal details</h3><div class="form-grid">
 <label><span>Full name *</span><input name="patientName" data-required="patient" autocomplete="name"></label>
@@ -70,7 +46,7 @@
 </div></div>
 </div>
 
-<!-- Doctor fields -->
+<!-- DOCTOR FORM -->
 <div id="doctorFields" class="role-fields hidden">
 <div class="signup-section"><div class="section-kicker">DOCTOR · PROFESSIONAL IDENTITY</div><h3>Doctor details</h3><div class="form-grid">
 <label><span>Doctor's full name *</span><input name="doctorName" data-required="doctor" autocomplete="name"></label>
@@ -91,7 +67,7 @@
 </div></div>
 </div>
 
-<!-- Hospital fields -->
+<!-- HOSPITAL FORM -->
 <div id="hospitalFields" class="role-fields hidden">
 <div class="signup-section"><div class="section-kicker">HOSPITAL · INSTITUTIONAL IDENTITY</div><h3>Hospital details</h3><div class="form-grid">
 <label><span>Hospital name *</span><input name="hospitalName" data-required="hospital"></label>
@@ -111,21 +87,13 @@
 <label><span>Verification status</span><select name="hospitalVerification"><option>Pending verification</option><option>Verified</option></select></label>
 <label class="wide"><span>Verification / license reference</span><input name="hospitalVerificationRef"></label>
 </div></div>
-<!-- Credentials -->
-<div class="signup-section">
-<div class="section-kicker">SECURITY · CREDENTIALS</div>
-<h3>Account Password & 6-Digit MPIN</h3>
-<div class="form-grid">
-<label><span>Password *</span><input name="password" id="signupPassword" type="password" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password"></label>
-<label><span>6-Digit Numeric MPIN *</span><input name="mpin" id="signupMpin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required placeholder="e.g. 123456 (For fast login & consent)"></label>
-</div></div>
+</div>
 
 <label class="consent"><input id="signupConsent" type="checkbox" required><span>I confirm that the information provided is accurate. A unique MediLocker Unit ID will be generated for this account.</span></label>
-<button class="primary-btn full" type="submit" id="signupSubmitBtn">Create account & generate Unit ID ↗</button>
+<button class="primary-btn full" type="submit">Create account & generate Unit ID ↗</button>
 <p class="signup-prompt">Already registered? <a href="login.html">Sign in with Email + Unit ID →</a></p>
 </form></section></main>
 
-<!-- Unit modal -->
-<div class="modal hidden" id="unitModal"><div class="modal-card"><button class="modal-close" id="closeUnit" type="button">×</button><div class="success-icon">✓</div><h2>Account created.</h2><p id="unitMessage">Save your Unit ID. It is required together with your registered email or MPIN for login.</p><div class="generated-id" id="generatedUnit"></div><button class="primary-btn full" id="goLogin" type="button">Continue to login →</button></div></div>
-<script src="js/i18n.js"></script><script src="js/api.js"></script><script src="js/main.js"></script>
+<div class="modal hidden" id="unitModal"><div class="modal-card"><button class="modal-close" id="closeUnit" type="button">×</button><div class="success-icon">✓</div><h2>Account created.</h2><p id="unitMessage">Save your Unit ID. It is required together with your registered email for login.</p><div class="generated-id" id="generatedUnit"></div><button class="primary-btn full" id="goLogin" type="button">Continue to login →</button></div></div>
+<script src="js/i18n.js"></script><script src="js/main.js"></script>
 </body></html>
