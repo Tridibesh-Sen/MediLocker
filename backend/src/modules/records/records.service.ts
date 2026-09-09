@@ -5,6 +5,7 @@ import { uploadMedicalDocument } from '../../utils/storage';
 import { AIService } from '../ai/ai.service';
 import { logger } from '../../utils/logger';
 import { AppError } from '../../middlewares/errorHandler';
+import { cacheService } from '../../utils/cache';
 
 export class RecordsService {
   /**
@@ -152,6 +153,11 @@ export class RecordsService {
       });
 
       logger.info(`Medi-AI extraction completed for record ${record.id}, timeline event ${timelineEvent.id}`);
+
+      // Invalidate patient's records, timeline, and daily todos
+      cacheService.invalidatePrefix(`records:list:${userId}`);
+      cacheService.invalidatePrefix(`timeline:${userId}`);
+      cacheService.invalidatePrefix(`todo:today:${userId}`);
 
       return {
         record: {
@@ -327,6 +333,11 @@ export class RecordsService {
       }
     }
 
+    // Invalidate patient's records, timeline, and daily todos
+    cacheService.invalidatePrefix(`records:list:${userId}`);
+    cacheService.invalidatePrefix(`timeline:${userId}`);
+    cacheService.invalidatePrefix(`todo:today:${userId}`);
+
     return {
       record: {
         ...record,
@@ -337,9 +348,15 @@ export class RecordsService {
   }
 
   /**
-   * List medical records with type filter
+   * List medical records with type filter (Accelerated with cache)
    */
   static async listRecords(userId: string, filter?: string) {
+    const cacheKey = `records:list:${userId}:${filter || 'all'}`;
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const where: any = { patientId: userId };
     if (filter && filter !== 'all') {
       where.documentType = filter.toUpperCase() as DocumentType;
@@ -355,7 +372,7 @@ export class RecordsService {
       },
     });
 
-    return records.map((r) => {
+    const result = records.map((r) => {
       const event = r.timelineEvent;
       const uploadedDdmmyyyy = r.uploadedAt.toLocaleDateString('en-GB').replace(/\//g, '');
       return {
@@ -379,6 +396,11 @@ export class RecordsService {
         uploadedAt: r.uploadedAt,
       };
     });
+
+    // Cache records for 5 minutes
+    cacheService.set(cacheKey, result, 300);
+
+    return result;
   }
 
   /**

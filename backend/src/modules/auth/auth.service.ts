@@ -6,6 +6,7 @@ import { env } from '../../config/env';
 import { generateMediLockerId } from '../../utils/idGenerator';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
+import { cacheService } from '../../utils/cache';
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -315,23 +316,30 @@ export class AuthService {
       user.hospitalProfile?.hospitalName ||
       'User';
 
+    const resultUser = {
+      id: user.id,
+      medilockerId: user.medilockerId,
+      email: user.email,
+      name,
+      role: user.role.toLowerCase(),
+      phone: user.phone,
+      bloodGroup: user.patientProfile?.bloodGroup || 'Not specified',
+      allergies: user.patientProfile?.baselineAllergies ? [user.patientProfile.baselineAllergies] : [],
+      chronicConditions: user.patientProfile?.medicalHistory ? [user.patientProfile.medicalHistory] : [],
+      emergencyContact: {
+        name: user.patientProfile?.emergencyContactName || 'Not configured',
+        phone: user.phone,
+        relation: 'Family',
+      },
+    };
+
+    // Cache user profile and unit details in-memory/Redis immediately
+    cacheService.setUserProfile(user.id, resultUser, 600);
+    cacheService.setUserByUnit(user.medilockerId, resultUser, 900);
+
     return {
       token,
-      user: {
-        id: user.id,
-        medilockerId: user.medilockerId,
-        email: user.email,
-        name,
-        role: user.role.toLowerCase(),
-        bloodGroup: user.patientProfile?.bloodGroup || 'Not specified',
-        allergies: user.patientProfile?.baselineAllergies ? [user.patientProfile.baselineAllergies] : [],
-        chronicConditions: user.patientProfile?.medicalHistory ? [user.patientProfile.medicalHistory] : [],
-        emergencyContact: {
-          name: user.patientProfile?.emergencyContactName || 'Not configured',
-          phone: user.phone,
-          relation: 'Family',
-        },
-      },
+      user: resultUser,
     };
   }
 
@@ -516,9 +524,16 @@ export class AuthService {
   }
 
   /**
-   * Get authenticated user profile
+   * Get authenticated user profile (Accelerated with in-memory / Redis cache)
    */
   static async getMe(userId: string) {
+    // 1. Fast Cache Lookup
+    const cached = await cacheService.getUserProfile(userId);
+    if (cached) {
+      return cached;
+    }
+
+    // 2. Query Database via Prisma
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -536,7 +551,7 @@ export class AuthService {
       user.hospitalProfile?.hospitalName ||
       'User';
 
-    return {
+    const result = {
       id: user.id,
       medilockerId: user.medilockerId,
       email: user.email,
@@ -554,6 +569,12 @@ export class AuthService {
         relation: 'Family',
       },
     };
+
+    // 3. Store in cache for continuous fast retrieval (10 minutes)
+    cacheService.setUserProfile(userId, result, 600);
+    cacheService.setUserByUnit(user.medilockerId, result, 900);
+
+    return result;
   }
 
   /**
@@ -593,6 +614,10 @@ export class AuthService {
         },
       });
     }
+
+    // Invalidate stale cache immediately
+    cacheService.invalidateUserProfile(userId);
+    cacheService.invalidateUserByUnit(user.medilockerId);
 
     return this.getMe(userId);
   }

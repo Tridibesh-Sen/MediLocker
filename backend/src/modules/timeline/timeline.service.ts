@@ -1,11 +1,18 @@
 import { prisma } from '../../database/prisma';
 import { AppError } from '../../middlewares/errorHandler';
+import { cacheService } from '../../utils/cache';
 
 export class TimelineService {
   /**
-   * Get patient chronological timeline events
+   * Get patient chronological timeline events (Accelerated with cache)
    */
   static async getPatientTimeline(patientUserId: string) {
+    const cacheKey = `timeline:${patientUserId}`;
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const events = await prisma.timelineEvent.findMany({
       where: { patientId: patientUserId },
       orderBy: { createdAt: 'desc' },
@@ -22,7 +29,7 @@ export class TimelineService {
       take: 30, // Last 30 days
     });
 
-    return {
+    const result = {
       timeline: events.map((e) => ({
         id: e.id,
         eventDateDdmmyyyy: e.eventDateDdmmyyyy,
@@ -47,6 +54,11 @@ export class TimelineService {
         feedback: f.patientFeedback,
       })),
     };
+
+    // Cache timeline for 5 minutes
+    cacheService.set(cacheKey, result, 300);
+
+    return result;
   }
 
   /**

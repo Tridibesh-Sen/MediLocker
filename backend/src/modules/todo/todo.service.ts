@@ -2,6 +2,7 @@ import { SeverityColor, TimeSlot } from '@prisma/client';
 import { prisma } from '../../database/prisma';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
+import { cacheService } from '../../utils/cache';
 
 export class TodoService {
   /**
@@ -10,6 +11,14 @@ export class TodoService {
   static async getTodayTasks(userId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    const dateKey = today.toISOString().slice(0, 10);
+    const cacheKey = `todo:today:${userId}:${dateKey}`;
+
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -61,7 +70,7 @@ export class TodoService {
     // Calculate adherence streak (consecutive days with completed logs)
     const streakDays = await this.calculateStreak(userId);
 
-    return {
+    const result = {
       tasks,
       stats: {
         total,
@@ -72,6 +81,11 @@ export class TodoService {
         todayFeeling: todayFeeling || null,
       },
     };
+
+    // Cache today's tasks for 5 minutes
+    cacheService.set(cacheKey, result, 300);
+
+    return result;
   }
 
   /**
@@ -93,6 +107,9 @@ export class TodoService {
         completedAt: !task.isCompleted ? new Date() : null,
       },
     });
+
+    // Invalidate cached tasks for this user
+    cacheService.invalidatePrefix(`todo:today:${userId}`);
 
     return updated;
   }
@@ -129,6 +146,9 @@ export class TodoService {
         patientFeedback: feedback,
       },
     });
+
+    // Invalidate cached tasks & stats for this user
+    cacheService.invalidatePrefix(`todo:today:${userId}`);
 
     logger.info(`Daily feeling logged for user ${userId}: ${severityColor} (Score: ${feelingScore})`);
 

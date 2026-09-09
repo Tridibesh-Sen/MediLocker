@@ -7,6 +7,49 @@
 
   const getSession=()=>{try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}};
   const getToken=()=>localStorage.getItem('medilockerToken');
+
+  // Client-Side Profile & Continuous Identity Cache (Fast SWR)
+  const PROFILE_CACHE_KEY='medilockerUserProfile';
+  const getCachedProfile=()=>{
+    try{
+      const raw=localStorage.getItem(PROFILE_CACHE_KEY);
+      return raw?JSON.parse(raw):null;
+    }catch(e){return null;}
+  };
+  const setCachedProfile=(u)=>{
+    try{
+      if(u){
+        localStorage.setItem(PROFILE_CACHE_KEY,JSON.stringify(u));
+        const s=getSession()||{};
+        s.unit=u.medilockerId||s.unit;
+        s.name=u.name||s.name;
+        s.email=u.email||s.email;
+        if(u.role)s.role=u.role.toLowerCase();
+        localStorage.setItem(SESSION_KEY,JSON.stringify(s));
+      }else{
+        localStorage.removeItem(PROFILE_CACHE_KEY);
+      }
+    }catch(e){}
+  };
+  async function getUserProfileFast(forceFresh=false){
+    const cached=getCachedProfile();
+    if(cached&&!forceFresh)return cached;
+    const token=getToken();
+    if(!token)return cached||null;
+    try{
+      const res=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
+      if(res.ok){
+        const json=await res.json();
+        const u=json.data||json.user;
+        if(u){
+          setCachedProfile(u);
+          return u;
+        }
+      }
+    }catch(_){}
+    return cached||null;
+  }
+
   const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const initials=n=>(n||'User').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
   const currentT=()=>window.T?.[localStorage.getItem('medilockerLanguage')||'en']||window.T?.en||{};
@@ -118,7 +161,8 @@
         if(res.ok&&data.success&&data.user){
           const u=data.user;
           localStorage.setItem('medilockerToken',data.token);
-          localStorage.setItem(SESSION_KEY,JSON.stringify({unit:u.medilockerId||unit,email:u.email||email,role:targetRole}));
+          setCachedProfile(u);
+          localStorage.setItem(SESSION_KEY,JSON.stringify({unit:u.medilockerId||unit,email:u.email||email,role:targetRole,name:u.name||'User'}));
           location.href=targetRole==='doctor'?'doctor.html':targetRole==='hospital'?'hospital.html':'dashboard.html';
           return;
         }
@@ -226,7 +270,8 @@
 
         const unit=resData.data.user.medilockerId;
         if(resData.data.token)localStorage.setItem('medilockerToken',resData.data.token);
-        localStorage.setItem(SESSION_KEY,JSON.stringify({unit,email:payload.email,role}));
+        if(resData.data.user)setCachedProfile(resData.data.user);
+        localStorage.setItem(SESSION_KEY,JSON.stringify({unit,email:payload.email,role,name:resData.data.user?.name||payload.name}));
         localStorage.setItem('medilockerLastCreatedUnit',unit);
         localStorage.setItem('medilockerLastCreatedRole',role);
         
@@ -281,21 +326,39 @@
       Object.entries(fields).forEach(([k,v])=>document.querySelectorAll(`[data-field="${k}"]`).forEach(e=>e.value=v));
     };
 
+    // 1. Instant Zero-Latency Render from Client Cache
+    const cachedProfile = getCachedProfile();
+    if (cachedProfile) {
+      render(cachedProfile);
+      window.currentUserProfile = cachedProfile;
+    }
+
+    // 2. SWR Background Revalidation
     try{
       const res=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
       if(!res.ok){
-        alert('Session expired or server unreachable. Please sign in again.');
-        location.href='login.html';
-        return;
-      }
-      const data=await res.json();
-      if(data.user){
-        render(data.user);
-        window.currentUserProfile=data.user;
+        if(res.status===401){
+          setCachedProfile(null);
+          localStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem('medilockerToken');
+          alert('Session expired. Please sign in again.');
+          location.href='login.html';
+          return;
+        }
+      }else{
+        const data=await res.json();
+        const freshUser = data.data || data.user;
+        if(freshUser){
+          setCachedProfile(freshUser);
+          render(freshUser);
+          window.currentUserProfile=freshUser;
+        }
       }
     }catch(err){
-      alert('Server error: Unable to load patient profile from Supabase database.');
-      return;
+      if(!cachedProfile){
+        alert('Server error: Unable to connect to Supabase database. Please check your backend connection.');
+        return;
+      }
     }
 
     // Live dashboard active meds counter from Supabase
@@ -352,40 +415,10 @@
     }));
   }
 
-  function bindProviderPortal(role){
-    const s=requireSession(role);
-    if(!s)return;
-    const token=getToken();
-    document.querySelectorAll('[data-provider-name]').forEach(e=>e.textContent=s.email||role);
-    document.querySelectorAll('[data-provider-unit]').forEach(e=>e.textContent=s.unit);
-    document.querySelectorAll('[data-provider-initials]').forEach(e=>e.textContent=initials(s.email));
-    const form=document.getElementById('patientSearchForm'),input=document.getElementById('patientUnitSearch'),result=document.getElementById('patientSearchResult'),empty=document.getElementById('patientSearchEmpty');
-    if(form)form.addEventListener('submit',async e=>{
-      e.preventDefault();
-      const unit=input.value.trim().toUpperCase();
-      try{
-        const res=await fetch(apiUrl('/api/v1/delegation/request-access'),{
-          method:'POST',
-          headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
-          body:JSON.stringify({patientMedilockerId:unit})
-        });
-        const data=await res.json();
-        if(res.ok&&data.success){
-          alert(`Access request initiated for patient ${unit}. Awaiting patient sovereign authorization.`);
-        }else{
-          empty?.classList.remove('hidden');
-          result.classList.add('hidden');
-          if(empty)empty.innerHTML=`<div class="empty-icon">⌕</div><h3>Patient Not Found</h3><p>${esc(data.error||'No patient matches that MediLocker Unit ID in Supabase.')}</p>`;
-        }
-      }catch(_){
-        alert('Server error: Could not reach database.');
-      }
-    });
-  }
-
   function bindLogout(){
     document.querySelectorAll('[data-logout]').forEach(b=>b.addEventListener('click',e=>{
       e.preventDefault();
+      setCachedProfile(null);
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem('medilockerToken');
       location.href='index.html';
@@ -502,9 +535,7 @@
 
     let userAllergies=[];
     try{
-      const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
-      const meData=await meRes.json();
-      const u=meData.data||meData.user;
+      const u=await getUserProfileFast();
       userAllergies=(u?.allergies||[]).map(a=>String(a).toLowerCase().trim()).filter(Boolean);
     }catch(_){}
 
@@ -733,11 +764,10 @@
     if(totalCountEl)totalCountEl.textContent=String(events.length);
     if(activeCoursesEl)activeCoursesEl.textContent=`${events.filter(e=>e.prescribedMedications?.length>0).length} Active`;
 
-    // Flagged allergies from user profile
+    // Flagged allergies from cached user profile (0ms latency)
     if(flaggedAllergiesEl){
       try{
-        const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
-        const u=meData.data||meData.user;
+        const u=await getUserProfileFast();
         const allergies=u?.allergies||[];
         flaggedAllergiesEl.textContent=allergies.length?allergies.join(', '):'None';
       }catch(_){
@@ -781,9 +811,7 @@
 
     if(token){
       try{
-        const meRes=await fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}});
-        const meData=await meRes.json();
-        const u=meData.data||meData.user;
+        const u=await getUserProfileFast();
         userAllergies=(u?.allergies||[]).map(a=>String(a).toLowerCase().trim()).filter(Boolean);
       }catch(_){}
     }
@@ -1170,10 +1198,9 @@
     const cabinetContext=document.getElementById('aiContextCabinet');
     const token=getToken();
 
-    // Fetch live profile and live cabinet from DB
+    // Fetch live profile and live cabinet from DB (0ms instant cache)
     if(token){
-      fetch(apiUrl('/api/v1/auth/me'),{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.json()).then(data=>{
-        const u=data.data||data.user;
+      getUserProfileFast().then(u=>{
         if(u&&allergyContext){
           const hasAllergy=u.allergies&&u.allergies.length;
           allergyContext.textContent=hasAllergy?`⚠ Allergy: ${u.allergies.join(', ')}`:'Allergies: None flagged';
@@ -1651,7 +1678,27 @@
 
   // 5. Provider Workspace Handler (Doctor & Hospital Portals)
   function bindProviderPortal(role){
+    const s=requireSession(role);
+    if(!s)return;
     const token=getToken();
+
+    const renderProvider=(u)=>{
+      const displayName=u?.name||s.name||s.email||role;
+      const unitId=u?.medilockerId||s.unit||'';
+      document.querySelectorAll('[data-provider-name]').forEach(e=>e.textContent=displayName);
+      document.querySelectorAll('[data-provider-unit]').forEach(e=>e.textContent=unitId);
+      document.querySelectorAll('[data-provider-initials]').forEach(e=>e.textContent=initials(displayName));
+    };
+
+    // 1. Instant Zero-Latency Render from Client Cache/Session
+    const cached=getCachedProfile();
+    renderProvider(cached);
+
+    // 2. SWR Background Refresh
+    getUserProfileFast().then(u=>{
+      if(u)renderProvider(u);
+    });
+
     const searchForm=document.getElementById('patientSearchForm');
     const searchInput=document.getElementById('patientUnitSearch');
     const emptyState=document.getElementById('patientSearchEmpty');
@@ -1660,12 +1707,9 @@
     const recordModal=document.getElementById('patientRecordModal');
     const recordModalContent=document.getElementById('patientRecordModalContent');
     const closeRecordModal=document.getElementById('closePatientRecordModal');
-
     if(closeRecordModal){
       closeRecordModal.addEventListener('click',()=>recordModal?.classList.add('hidden'));
     }
-
-    if(!token)return;
 
     // Load currently active patients
     async function loadActivePatients(){

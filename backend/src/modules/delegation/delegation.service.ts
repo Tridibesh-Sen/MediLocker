@@ -2,6 +2,7 @@ import { AuthMethod, DelegationStatus, UserRole } from '@prisma/client';
 import { prisma } from '../../database/prisma';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
+import { cacheService } from '../../utils/cache';
 
 export class DelegationService {
   /**
@@ -14,6 +15,12 @@ export class DelegationService {
     }
 
     const cleanId = medilockerId.trim().toUpperCase();
+
+    // 1. Check cache
+    const cached = await cacheService.get(`patient:search:${cleanId}`);
+    if (cached) {
+      return cached;
+    }
 
     const patient = await prisma.user.findUnique({
       where: { medilockerId: cleanId },
@@ -31,11 +38,16 @@ export class DelegationService {
       throw new AppError('No registered patient found with this MediLocker Unit ID.', 404);
     }
 
-    return {
+    const result = {
       medilockerId: patient.medilockerId,
       fullName: patient.patientProfile?.fullName || 'Patient',
       dob: patient.patientProfile?.dob || null,
     };
+
+    // Cache for 15 minutes
+    cacheService.set(`patient:search:${cleanId}`, result, 900);
+
+    return result;
   }
 
   /**
