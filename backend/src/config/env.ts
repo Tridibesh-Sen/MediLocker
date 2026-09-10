@@ -48,9 +48,9 @@ const envSchema = z.object({
       return Boolean(val);
     }, z.boolean())
     .default(true),
-  SMTP_USER: z.string().default(''),
+  SMTP_USER: z.string().default('medilocker.noreply@gmail.com'),
   SMTP_PASS: z.string().default(''),
-  SMTP_FROM: z.string().default('MediLocker <noreply@medilocker.in>'),
+  SMTP_FROM: z.string().default('MediLocker <medilocker.noreply@gmail.com>'),
 });
 
 const parsed = envSchema.safeParse(process.env);
