@@ -158,21 +158,29 @@ export class AppointmentsService {
   static async bookAppointment(
     patientUserId: string,
     data: {
-      doctorId: string;
+      doctorId?: string;
+      doctorMedilockerId?: string;
       appointmentDate: string;
       timeSlot: string;
       reason?: string;
       notes?: string;
     }
   ) {
-    const { doctorId, appointmentDate, timeSlot, reason, notes } = data;
+    const { appointmentDate, timeSlot, reason, notes } = data;
+    const targetDocId = (data.doctorId || data.doctorMedilockerId || '').trim();
 
-    if (!doctorId || !appointmentDate || !timeSlot) {
-      throw new AppError('Doctor ID, appointment date, and time slot are required.', 400);
+    if (!targetDocId || !appointmentDate || !timeSlot) {
+      throw new AppError('Doctor identifier, appointment date, and time slot are required.', 400);
     }
 
-    const doctor = await prisma.doctorProfile.findUnique({
-      where: { id: doctorId },
+    const doctor = await prisma.doctorProfile.findFirst({
+      where: {
+        OR: [
+          { id: targetDocId },
+          { userId: targetDocId },
+          { user: { medilockerId: targetDocId } },
+        ],
+      },
       include: { user: true },
     });
 

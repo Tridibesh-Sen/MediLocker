@@ -7,10 +7,19 @@ export class AppointmentsController {
   static async listDoctors(req: Request, res: Response, next: NextFunction) {
     try {
       const patientUserId = req.user?.userId;
+      let filterParam = req.query.filter as any;
+      if (!filterParam) {
+        if (req.query.previouslyVisited === 'true' || req.query.previously_visited === 'true') {
+          filterParam = 'previously_visited';
+        } else if (req.query.nearby === 'true') {
+          filterParam = 'nearby';
+        }
+      }
+
       const query: DoctorFilterQuery = {
-        filter: req.query.filter as any,
-        specialization: req.query.specialization as string,
-        search: req.query.search as string,
+        filter: filterParam,
+        specialization: (req.query.specialization || req.query.specialty) as string,
+        search: (req.query.search || req.query.q) as string,
       };
 
       const doctors = await AppointmentsService.listDoctors(patientUserId, query);

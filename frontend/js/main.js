@@ -1772,56 +1772,6 @@
     });
   }
 
-  // 4. Consent & Access Delegation
-  function bindDelegation(){
-    const modal=document.getElementById('grantModal');
-    const openBtn=document.getElementById('openGrantModal');
-    const closeBtn=document.getElementById('closeGrantModal');
-    const form=document.getElementById('grantAccessForm');
-    const list=document.getElementById('delegationsList');
-    const countEl=document.getElementById('activeDelegationsCount');
-
-    openBtn?.addEventListener('click',()=>modal?.classList.remove('hidden'));
-    closeBtn?.addEventListener('click',()=>modal?.classList.add('hidden'));
-
-    form?.addEventListener('submit',e=>{
-      e.preventDefault();
-      const unit=document.getElementById('providerUnitInput').value.trim().toUpperCase();
-      const dur=document.getElementById('accessDuration').value;
-      const mpin=document.getElementById('confirmMpin').value.trim();
-
-      if(mpin.length<4){
-        alert('Please enter your valid 6-digit MPIN to authorize.');
-        return;
-      }
-
-      if(list){
-        const emptyState=document.getElementById('delegationsEmptyState');
-        if(emptyState)emptyState.remove();
-        const card=document.createElement('article');
-        card.className='delegation-card';
-        const id='grant-'+Date.now();
-        card.id=id;
-        card.innerHTML=`<div><div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;"><span class="status-pill" style="background:#e8f4e9;color:#35673a;">Active Session</span><span class="token-timer">⏱ Duration: ${dur}</span></div><h3 style="font:800 21px 'Manrope';margin:4px 0;">Authorized Provider (${esc(unit)})</h3><p style="color:var(--muted);font-size:14px;margin:2px 0 6px;">Provider Unit ID: <b>${esc(unit)}</b> · Authorized via MPIN</p><div style="font-size:13px;color:var(--muted);">Permissions: <span>Timeline Events, Prescriptions, Lab Reports</span></div></div><button class="secondary-btn" style="border-color:#cf4e4e;color:#cf4e4e;" onclick="window.revokeGrant('${id}', '${esc(unit)}')">Revoke Access ✕</button>`;
-        list.prepend(card);
-        if(countEl)countEl.textContent='1 Provider';
-      }
-      modal?.classList.add('hidden');
-      form.reset();
-      alert(`Provider "${unit}" has been granted temporary access under your MPIN authorization.`);
-    });
-  }
-
-  window.revokeGrant=function(id,name){
-    if(confirm(`Are you sure you want to revoke access for ${name}? Their clinical session token will be invalidated immediately.`)){
-      const el=document.getElementById(id);
-      if(el)el.remove();
-      const countEl=document.getElementById('activeDelegationsCount');
-      if(countEl)countEl.textContent='0 Providers';
-      alert(`Access for ${name} has been revoked.`);
-    }
-  };
-
   // 5. Lab Tests & Vitals
   async function bindTests(){
     const modal=document.getElementById('logVitalsModal');
@@ -2013,6 +1963,33 @@
     const auditBody=document.getElementById('auditLogsBody');
 
     if(!token)return;
+
+    const grantModal = document.getElementById('grantModal');
+    const openGrantBtn = document.getElementById('openGrantModal');
+    const closeGrantBtn = document.getElementById('closeGrantModal');
+    const grantForm = document.getElementById('grantAccessForm');
+
+    openGrantBtn?.addEventListener('click', () => grantModal?.classList.remove('hidden'));
+    closeGrantBtn?.addEventListener('click', () => grantModal?.classList.add('hidden'));
+    grantModal?.addEventListener('click', (e) => { if (e.target === grantModal) grantModal.classList.add('hidden'); });
+
+    grantForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const unit = document.getElementById('providerUnitInput')?.value.trim().toUpperCase();
+      const mpin = document.getElementById('confirmMpin')?.value.trim();
+      if (!unit) {
+        alert('Please enter a healthcare provider Unit ID.');
+        return;
+      }
+      if (!mpin || mpin.length < 4) {
+        alert('Please enter your valid MPIN to confirm authorization.');
+        return;
+      }
+      grantModal?.classList.add('hidden');
+      grantForm.reset();
+      alert(`Provider "${unit}" has been pre-authorized. Share your MediLocker Unit ID with your physician; active consent tokens and verification codes will update in real-time below.`);
+      loadDelegations();
+    });
 
     let pollInterval=null;
 
@@ -2920,33 +2897,31 @@
     const listContainer = document.getElementById('doctorsListContainer');
     if (!listContainer) return;
 
-    let activeFilter = 'all'; // 'all' | 'visited' | 'nearby'
-    const specialtyFilter = document.getElementById('doctorSpecialtyFilter');
+    let activeFilter = 'all'; // 'all' | 'previously_visited' | 'nearby'
+    const specializationFilter = document.getElementById('specializationFilter') || document.getElementById('doctorSpecialtyFilter');
     const searchInput = document.getElementById('doctorSearchInput');
+    const doctorCountPill = document.getElementById('doctorCountPill');
 
-    const filterAllBtn = document.getElementById('filterAllDoctorsBtn');
-    const filterVisitedBtn = document.getElementById('filterVisitedDoctorsBtn');
-    const filterNearbyBtn = document.getElementById('filterNearbyDoctorsBtn');
-
-    function updateFilterButtons() {
-      [filterAllBtn, filterVisitedBtn, filterNearbyBtn].forEach(b => {
-        if (!b) return;
-        b.style.background = '#f3f0f5';
-        b.style.color = 'var(--plum)';
-        b.style.borderColor = 'var(--line)';
+    // Filter tabs
+    const filterButtons = document.querySelectorAll('#doctorFilterTabs [data-filter], .filter-tabs [data-filter]');
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => {
+          b.classList.remove('active');
+          b.style.background = '#fff';
+          b.style.color = 'var(--text)';
+          b.style.borderColor = 'var(--line)';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--plum)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--plum)';
+        activeFilter = btn.dataset.filter || 'all';
+        loadDoctors();
       });
-      const activeBtn = activeFilter === 'visited' ? filterVisitedBtn : (activeFilter === 'nearby' ? filterNearbyBtn : filterAllBtn);
-      if (activeBtn) {
-        activeBtn.style.background = 'var(--plum)';
-        activeBtn.style.color = '#fff';
-        activeBtn.style.borderColor = 'var(--plum)';
-      }
-    }
+    });
 
-    filterAllBtn?.addEventListener('click', () => { activeFilter = 'all'; updateFilterButtons(); loadDoctors(); });
-    filterVisitedBtn?.addEventListener('click', () => { activeFilter = 'visited'; updateFilterButtons(); loadDoctors(); });
-    filterNearbyBtn?.addEventListener('click', () => { activeFilter = 'nearby'; updateFilterButtons(); loadDoctors(); });
-    specialtyFilter?.addEventListener('change', () => loadDoctors());
+    specializationFilter?.addEventListener('change', () => loadDoctors());
 
     let searchTimer = null;
     searchInput?.addEventListener('input', () => {
@@ -2956,13 +2931,20 @@
 
     async function loadDoctors() {
       listContainer.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1;">Finding verified doctors…</div>`;
+      if (doctorCountPill) doctorCountPill.textContent = 'Searching…';
+
       const params = new URLSearchParams();
-      if (activeFilter === 'visited') params.set('previouslyVisited', 'true');
-      if (activeFilter === 'nearby') params.set('nearby', 'true');
-      const spec = specialtyFilter?.value;
-      if (spec) params.set('specialty', spec);
+      if (activeFilter && activeFilter !== 'all') {
+        params.set('filter', activeFilter);
+      }
+      const spec = specializationFilter?.value;
+      if (spec && spec !== 'all') {
+        params.set('specialization', spec);
+      }
       const query = searchInput?.value.trim();
-      if (query) params.set('search', query);
+      if (query) {
+        params.set('search', query);
+      }
 
       try {
         const res = await fetch(apiUrl(`/api/v1/appointments/doctors?${params.toString()}`), {
@@ -2971,12 +2953,16 @@
         const json = await res.json();
         const doctors = json.data || [];
 
+        if (doctorCountPill) {
+          doctorCountPill.textContent = `${doctors.length} Doctor${doctors.length === 1 ? '' : 's'} Available`;
+        }
+
         if (doctors.length === 0) {
           listContainer.innerHTML = `
-            <div class="empty-state compact" style="grid-column:1/-1;padding:40px;text-align:center;">
+            <div class="empty-state compact" style="grid-column:1/-1;padding:40px;text-align:center;background:#fff;border-radius:18px;border:1px solid var(--line);">
               <div class="empty-icon" style="font-size:36px;margin-bottom:8px;">👨‍⚕️</div>
-              <h4 style="margin:4px 0;">No Doctors Found</h4>
-              <p style="color:var(--muted);margin:0;">No registered doctors match your current filter criteria.</p>
+              <h4 style="margin:4px 0;font:800 18px 'Manrope';">No Doctors Found</h4>
+              <p style="color:var(--muted);margin:0;font-size:14px;">No registered healthcare providers match your current filter or search criteria.</p>
             </div>
           `;
           return;
@@ -2984,7 +2970,8 @@
 
         listContainer.innerHTML = doctors.map(doc => {
           const initialsStr = initials(doc.fullName);
-          const expText = doc.experienceYears ? `${doc.experienceYears}+ years exp` : '';
+          const expYears = doc.yearsExperience ?? doc.experienceYears;
+          const expText = expYears ? `${expYears}+ years exp` : '';
           const locationText = [doc.city, doc.state].filter(Boolean).join(', ');
 
           return `
@@ -3013,11 +3000,12 @@
               </div>
 
               <button class="primary-btn book-doc-btn" 
+                data-id="${esc(doc.id)}" 
                 data-unit="${esc(doc.medilockerId)}" 
                 data-name="${esc(doc.fullName)}" 
                 data-spec="${esc(doc.specialization)}"
                 data-clinic="${esc(doc.clinicName || '')}"
-                style="width:100%;padding:11px 16px;font-size:14px;">
+                style="width:100%;padding:11px 16px;font-size:14px;cursor:pointer;">
                 Book Appointment ↗
               </button>
             </div>
@@ -3026,36 +3014,51 @@
 
         listContainer.querySelectorAll('.book-doc-btn').forEach(btn => {
           btn.addEventListener('click', () => {
-            openBookingModal(btn.dataset.unit, btn.dataset.name, btn.dataset.spec, btn.dataset.clinic);
+            openBookingModal(
+              btn.dataset.id,
+              btn.dataset.unit,
+              btn.dataset.name,
+              btn.dataset.spec,
+              btn.dataset.clinic
+            );
           });
         });
 
       } catch (err) {
+        if (doctorCountPill) doctorCountPill.textContent = 'Error loading';
         listContainer.innerHTML = `<div class="empty-state compact" style="grid-column:1/-1;"><p style="color:#cf4e4e;">Failed to load doctors: ${esc(err.message)}</p></div>`;
       }
     }
 
-    // Modal logic
-    const modal = document.getElementById('appointmentModal');
-    const closeModal = document.getElementById('closeAppointmentModal');
+    // Modal elements - support both bookingModal and appointmentModal ID schemes
+    const modal = document.getElementById('bookingModal') || document.getElementById('appointmentModal');
+    const closeModal = document.getElementById('closeBookingModal') || document.getElementById('closeAppointmentModal');
     const cancelModal = document.getElementById('cancelAppointmentBtn');
-    const bookingForm = document.getElementById('bookAppointmentForm');
-    const docNameSpan = document.getElementById('appointmentDoctorName');
-    const docDetailsSpan = document.getElementById('appointmentDoctorDetails');
-    const docUnitInput = document.getElementById('appointmentDoctorUnitId');
+    const bookingForm = document.getElementById('appointmentBookingForm') || document.getElementById('bookAppointmentForm');
+    const docNameSpan = document.getElementById('modalDoctorName') || document.getElementById('appointmentDoctorName');
+    const docDetailsSpan = document.getElementById('modalDoctorDetails') || document.getElementById('appointmentDoctorDetails');
+    const docHiddenInput = document.getElementById('bookingDoctorId') || document.getElementById('appointmentDoctorUnitId');
+    const dateInput = document.getElementById('bookingDate') || document.getElementById('appointmentDate');
+    const timeSlotSelect = document.getElementById('bookingTimeSlot') || document.getElementById('appointmentTime');
+    const reasonInput = document.getElementById('bookingReason') || document.getElementById('appointmentReason');
+    const submitBtn = document.getElementById('submitBookingBtn') || document.getElementById('submitAppointmentBtn');
 
-    function openBookingModal(unit, name, spec, clinic) {
+    function openBookingModal(id, unit, name, spec, clinic) {
       if (!modal) return;
-      if (docNameSpan) docNameSpan.textContent = name;
-      if (docDetailsSpan) docDetailsSpan.textContent = `${spec} · ${clinic} (${unit})`;
-      if (docUnitInput) docUnitInput.value = unit;
+      if (docNameSpan) docNameSpan.textContent = `Dr. ${name.replace(/^Dr\.\s*/i, '')}`;
+      if (docDetailsSpan) docDetailsSpan.textContent = `${spec} · ${clinic || 'Clinic'} (${unit})`;
+      if (docHiddenInput) {
+        docHiddenInput.value = id || unit;
+        docHiddenInput.dataset.unit = unit;
+        docHiddenInput.dataset.id = id;
+      }
 
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateInput = document.getElementById('appointmentDate');
+      const today = new Date().toISOString().split('T')[0];
       if (dateInput) {
-        dateInput.min = tomorrow.toISOString().split('T')[0];
-        dateInput.value = tomorrow.toISOString().split('T')[0];
+        dateInput.min = today;
+        if (!dateInput.value || dateInput.value < today) {
+          dateInput.value = today;
+        }
       }
 
       modal.classList.remove('hidden');
@@ -3064,15 +3067,22 @@
     closeModal?.addEventListener('click', () => modal?.classList.add('hidden'));
     cancelModal?.addEventListener('click', () => modal?.classList.add('hidden'));
 
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.add('hidden');
+    });
+
     bookingForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const doctorUnitId = docUnitInput?.value.trim();
-      const dateVal = document.getElementById('appointmentDate')?.value;
-      const timeVal = document.getElementById('appointmentTime')?.value || '10:00 AM';
-      const reasonVal = document.getElementById('appointmentReason')?.value.trim();
-      const submitBtn = document.getElementById('submitAppointmentBtn');
+      const doctorIdVal = docHiddenInput?.value.trim();
+      const doctorUnitVal = docHiddenInput?.dataset.unit || doctorIdVal;
+      const dateVal = dateInput?.value;
+      const timeVal = timeSlotSelect?.value || 'Morning (09:00 AM - 12:00 PM)';
+      const reasonVal = reasonInput?.value.trim();
 
-      if (!doctorUnitId || !dateVal) return;
+      if (!doctorIdVal || !dateVal) {
+        alert('Please choose an appointment date.');
+        return;
+      }
 
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -3084,7 +3094,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
-            doctorMedilockerId: doctorUnitId,
+            doctorId: doctorIdVal,
+            doctorMedilockerId: doctorUnitVal,
             appointmentDate: dateVal,
             timeSlot: timeVal,
             reason: reasonVal || undefined
@@ -3093,11 +3104,11 @@
 
         const json = await res.json();
         if (!res.ok || !json.success) {
-          alert(json.error || 'Failed to book appointment.');
+          alert(json.error || json.message || 'Failed to book appointment.');
           return;
         }
 
-        alert('Appointment successfully booked with Dr. ' + (docNameSpan?.textContent || '') + '! Confirmation has been saved to your health portal.');
+        alert('Appointment successfully booked with ' + (docNameSpan?.textContent || 'the physician') + '! A confirmation email has been dispatched and saved to your portal.');
         modal?.classList.add('hidden');
         bookingForm.reset();
         loadMyAppointments();
@@ -3106,7 +3117,7 @@
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Confirm Appointment ↗';
+          submitBtn.textContent = 'Confirm & Book Appointment ↗';
         }
       }
     });
@@ -3123,7 +3134,7 @@
         const appts = json.data || [];
 
         if (appts.length === 0) {
-          myApptsList.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">No upcoming appointments scheduled.</p></div>`;
+          myApptsList.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">No upcoming appointments scheduled. Select a physician above to book a consultation.</p></div>`;
           return;
         }
 
@@ -3131,29 +3142,36 @@
           const apptDateStr = new Date(a.appointmentDate).toLocaleDateString('en-GB', {
             weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
           });
+          const statusBadge = a.status === 'CONFIRMED'
+            ? '<span class="status-pill" style="background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;">✓ Confirmed</span>'
+            : a.status === 'CANCELLED'
+            ? '<span class="status-pill" style="background:#fef2f2;color:#991b1b;font-size:11px;font-weight:700;">✕ Cancelled</span>'
+            : '<span class="status-pill" style="background:#fffbeb;color:#92400e;font-size:11px;font-weight:700;">⏳ Pending Approval</span>';
+
           return `
-            <div class="record-card" style="margin-bottom:10px;background:#faf8fd;border:1px solid var(--line);">
-              <div class="record-icon" style="background:#e0f2fe;color:#0369a1;">📅</div>
+            <div class="record-card" style="margin-bottom:12px;background:#faf8fd;border:1px solid var(--line);border-radius:14px;padding:16px;">
+              <div class="record-icon" style="background:#e0f2fe;color:#0369a1;font-size:20px;">📅</div>
               <div class="record-main">
                 <div>
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="status-pill" style="background:#f0fdf4;color:#166534;font-size:11px;">${esc(a.status)}</span>
-                    <span style="font-weight:700;font-size:14px;color:var(--plum);">${apptDateStr} at ${esc(a.timeSlot)}</span>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    ${statusBadge}
+                    <span style="font-weight:700;font-size:14px;color:var(--plum);">${apptDateStr} · ${esc(a.timeSlot)}</span>
                   </div>
-                  <h4 style="font:800 18px 'Manrope';margin:4px 0;">${esc(a.doctorName)} (${esc(a.specialization)})</h4>
+                  <h4 style="font:800 18px 'Manrope';margin:2px 0 4px;">Dr. ${esc(a.doctorName.replace(/^Dr\.\s*/i, ''))} <span style="font-size:14px;color:var(--muted);font-weight:500;">(${esc(a.specialization)})</span></h4>
                   <p style="margin:0;font-size:13px;color:var(--muted);">
-                    🏥 ${esc(a.clinicName || 'Clinic')} · 🆔 ${esc(a.doctorMedilockerId)}
-                    ${a.reason ? `· <i>"${esc(a.reason)}"</i>` : ''}
+                    🏥 ${esc(a.clinicName || 'Clinic')} · 🆔 <code>${esc(a.doctorMedilockerId)}</code>
+                    ${a.reason ? ` · Reason: <i>"${esc(a.reason)}"</i>` : ''}
                   </p>
                 </div>
               </div>
             </div>
           `;
         }).join('');
-      } catch (e) {}
+      } catch (e) {
+        myApptsList.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">Could not load scheduled appointments.</p></div>`;
+      }
     }
 
-    updateFilterButtons();
     loadDoctors();
     loadMyAppointments();
   }
