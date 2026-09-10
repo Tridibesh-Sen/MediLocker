@@ -3176,10 +3176,78 @@
     loadMyAppointments();
   }
 
+  function openEmergencySOSModal() {
+    const existing = document.getElementById('sosEmergencyModal');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'sosEmergencyModal';
+    backdrop.className = 'sos-modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="sos-modal-card" role="dialog" aria-modal="true">
+        <div class="sos-modal-icon">🚑</div>
+        <h2 class="sos-modal-title">Emergency Ambulance Service</h2>
+        <p class="sos-modal-subtitle">Immediate emergency medical response. Click below to dial directly:</p>
+        
+        <div class="sos-call-list">
+          <a href="tel:102" class="sos-call-item" style="border-color:#ef4444;background:#fff5f5;">
+            <div class="sos-call-info">
+              <strong class="sos-call-name" style="color:#b91c1c;">National Ambulance Service</strong>
+              <span class="sos-call-desc">24x7 Free Emergency Medical Transport</span>
+            </div>
+            <span class="sos-call-dial" style="background:#dc2626;color:#fff;border-color:#b91c1c;">📞 102</span>
+          </a>
+
+          <a href="tel:108" class="sos-call-item">
+            <div class="sos-call-info">
+              <strong class="sos-call-name">Emergency Medical Services (EMS)</strong>
+              <span class="sos-call-desc">Trauma, Critical Care & Disaster Response</span>
+            </div>
+            <span class="sos-call-dial">📞 108</span>
+          </a>
+
+          <a href="tel:112" class="sos-call-item">
+            <div class="sos-call-info">
+              <strong class="sos-call-name">Unified National Helpline</strong>
+              <span class="sos-call-desc">All-in-one Police, Fire & Medical Line</span>
+            </div>
+            <span class="sos-call-dial">📞 112</span>
+          </a>
+        </div>
+
+        <button type="button" class="sos-modal-close" id="closeSosModalBtn">Close Window</button>
+      </div>
+    `;
+
+    document.body.appendChild(backdrop);
+
+    backdrop.querySelector('#closeSosModalBtn').addEventListener('click', () => backdrop.remove());
+    backdrop.addEventListener('click', (ev) => {
+      if (ev.target === backdrop) backdrop.remove();
+    });
+  }
+
+  function bindEmergencySOS() {
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.sos-btn');
+      if (!btn) return;
+
+      const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        // Allow mobile dialer to launch natively via tel:102
+        return;
+      }
+
+      e.preventDefault();
+      openEmergencySOSModal();
+    });
+  }
+
   // DOM ready dispatcher
   document.addEventListener('DOMContentLoaded',()=>{
     bindLanguage();
     bindLocation();
+    bindEmergencySOS();
     window.applyLanguage?.(localStorage.getItem('medilockerLanguage')||'en');
     bindLogout();
 
