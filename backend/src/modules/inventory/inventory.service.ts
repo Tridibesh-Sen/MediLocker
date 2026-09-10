@@ -4,7 +4,6 @@ import { AIService } from '../ai/ai.service';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
 
-// Sample curated drug catalog for instant barcode matching
 const barcodePharmaCatalog: Record<string, { name: string; salt: string; dosage: string; category: string }> = {
   '8901234567890': { name: 'Dolo 650', salt: 'Paracetamol', dosage: '650mg', category: 'Antipyretic / Pain Relief' },
   '8902345678901': { name: 'Augmentin 625 Duo', salt: 'Amoxicillin + Clavulanic Acid', dosage: '625mg', category: 'Antibiotic' },
@@ -41,7 +40,6 @@ export class InventoryService {
     const alertDate = new Date(depletionDate);
     alertDate.setDate(alertDate.getDate() - 2);
 
-    // Generate e-pharmacy purchase link with search query
     const encodedQuery = encodeURIComponent(med.medicineName);
     const epharmacyLink = `https://www.1mg.com/search/all?name=${encodedQuery}`;
 
@@ -162,8 +160,6 @@ export class InventoryService {
    */
   static async lookupBarcode(code: string) {
     const cleanCode = code.trim();
-
-    // Check catalog
     const catalogMatch = barcodePharmaCatalog[cleanCode];
     if (catalogMatch) {
       return {

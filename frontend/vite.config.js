@@ -17,6 +17,7 @@ const HTML_PAGES = [
   'inventory',
   'ai-companion',
   'delegation',
+  'doctors',
   'tests',
   '404',
 ];
@@ -105,6 +106,7 @@ export default defineConfig({
         inventory: resolve(__dirname, 'inventory.html'),
         aiCompanion: resolve(__dirname, 'ai-companion.html'),
         delegation: resolve(__dirname, 'delegation.html'),
+        doctors: resolve(__dirname, 'doctors.html'),
         tests: resolve(__dirname, 'tests.html'),
         notFound: resolve(__dirname, '404.html'),
       },

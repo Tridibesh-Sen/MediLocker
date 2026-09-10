@@ -6,19 +6,11 @@ import { startCronScheduler } from './workers/cronScheduler';
 import { logger } from './utils/logger';
 
 async function bootstrap() {
-  // Check Database connection
   await checkDatabaseConnection();
-
-  // Start Background Cron Schedulers
   startCronScheduler();
 
-  // Start HTTP Server
   const server = app.listen(env.PORT, () => {
-    logger.info(`=======================================================`);
-    logger.info(`🏥 MediLocker Backend Server Running on Port ${env.PORT}`);
-    logger.info(`📡 Health check: http://localhost:${env.PORT}/api/v1/health`);
-    logger.info(`🔒 Environment: ${env.NODE_ENV}`);
-    logger.info(`=======================================================`);
+    logger.info(`MediLocker server listening on port ${env.PORT} (${env.NODE_ENV})`);
   });
 
   const shutdown = async (signal: string) => {

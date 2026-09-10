@@ -38,6 +38,14 @@ const envSchema = z.object({
   WEBAUTHN_RP_NAME: z.string().default('MediLocker'),
   WEBAUTHN_RP_ID: z.string().default('localhost'),
   WEBAUTHN_ORIGIN: z.string().default('http://localhost:5500'),
+
+  // Email (SMTP / Google App Password)
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().default(465),
+  SMTP_SECURE: z.coerce.boolean().default(true),
+  SMTP_USER: z.string().default('medilocker.noreply@gmail.com'),
+  SMTP_PASS: z.string().default('yzbt bfan jjha iaom'),
+  SMTP_FROM: z.string().default('MediLocker <medilocker.noreply@gmail.com>'),
 });
 
 const parsed = envSchema.safeParse(process.env);

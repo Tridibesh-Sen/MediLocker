@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { prisma } from '../../database/prisma';
 import { AppError } from '../../middlewares/errorHandler';
 import { cacheService } from '../../utils/cache';
@@ -22,11 +23,10 @@ export class TimelineService {
       },
     });
 
-    // Also fetch feeling logs to build the doctor symptom synopsis
     const feelingLogs = await prisma.dailyFeelingLog.findMany({
       where: { patientId: patientUserId },
       orderBy: { logDate: 'desc' },
-      take: 30, // Last 30 days
+      take: 30,
     });
 
     const result = {
@@ -55,7 +55,6 @@ export class TimelineService {
       })),
     };
 
-    // Cache timeline for 5 minutes
     cacheService.set(cacheKey, result, 300);
 
     return result;
@@ -78,5 +77,41 @@ export class TimelineService {
     }
 
     return event;
+  }
+
+  /**
+   * Permanently delete a patient timeline event and associated record
+   */
+  static async deleteTimelineEvent(eventId: string, userId: string) {
+    const event = await prisma.timelineEvent.findFirst({
+      where: { id: eventId, patientId: userId },
+      include: { record: true },
+    });
+
+    if (!event) {
+      throw new AppError('Timeline event not found or unauthorized.', 404);
+    }
+
+    // Delete linked MedicalRecord if present, which cascades to TimelineEvent & PrescribedMedication
+    if (event.recordId) {
+      const record = event.record;
+      if (record && record.storageKey && fs.existsSync(record.storageKey)) {
+        try {
+          fs.unlinkSync(record.storageKey);
+        } catch (_) {}
+      }
+      await prisma.medicalRecord.delete({
+        where: { id: event.recordId },
+      });
+    } else {
+      await prisma.timelineEvent.delete({
+        where: { id: eventId },
+      });
+    }
+
+    cacheService.del(`timeline:${userId}`);
+    cacheService.del(`records:${userId}`);
+
+    return { message: 'Timeline event deleted successfully.' };
   }
 }

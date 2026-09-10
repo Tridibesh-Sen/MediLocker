@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="shortcut icon" href="favicon.ico">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -12,7 +16,7 @@
 </head>
 <body class="app-page patient-dashboard">
   <header class="app-header">
-    <a class="brand" href="dashboard.html"><span class="brand-mark">M</span><span>Medi<span>Locker</span></span></a>
+    <a class="brand" href="dashboard.html"><img src="logo-icon.png" class="brand-icon" alt="MediLocker"><span>Medi<span>Locker</span></span></a>
     <div class="app-header-right">
       <button class="location-btn" id="locationBtn">⌖ <span data-i18n="setLocation">Set location</span></button>
       <select id="languageSelect">
@@ -44,6 +48,7 @@
         <a href="ai-companion.html">✦ <span data-i18n="aiCompanionPage">Medi-AI assistant</span></a>
         <a href="tests.html">⚗ <span data-i18n="testsPage">Lab tests & vitals</span></a>
         <a href="delegation.html">🛡 <span data-i18n="delegationPage">Consent & access</span></a>
+        <a href="doctors.html">🩺 <span>Find Doctors & Book</span></a>
         <a class="active" href="upload.html">＋ <span data-i18n="uploadPage">Upload documents</span></a>
         <a href="profile.html">◉ <span data-i18n="profilePage">My profile</span></a>
       </nav>
@@ -86,9 +91,23 @@
             </select>
           </label>
           <label>
-            <span>Consultation / Report Date</span>
-            <input type="text" id="docDate" placeholder="ddmmyyyy (e.g. 09092026)">
+            <span>Consultation / Report Date *</span>
+            <input type="date" id="docDate" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font:500 15px 'DM Sans',sans-serif;">
           </label>
+          <label id="doctorUnitIdWrapper">
+            <span>Doctor's MediLocker Unit ID (Optional)</span>
+            <input type="text" id="doctorUnitIdInput" placeholder="e.g. ML-DOC-XXXX" autocomplete="off">
+            <small style="color:var(--muted);font-size:12px;margin-top:2px;">Associates this prescription with your doctor for quick appointment re-booking.</small>
+          </label>
+          <div class="field-card" style="background:#fcfaff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:8px 0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <strong style="display:block;font-size:14px;color:var(--plum);">Are prescribed medicines still needed / currently ongoing?</strong>
+                <span id="medRoutineStatusHint" style="font-size:12px;color:var(--muted);">Yes · Active Routine: Medicines will be displayed in today's To-Do list.</span>
+              </div>
+              <input type="checkbox" id="medicineStillNeededCheck" checked style="width:22px;height:22px;accent-color:var(--plum);cursor:pointer;">
+            </div>
+          </div>
           <label>
             <span data-i18n="documentNote">Clinical note or doctor name</span>
             <textarea id="docNote" rows="3" placeholder="e.g. Dr. Sengupta · Bronchitis treatment course"></textarea>

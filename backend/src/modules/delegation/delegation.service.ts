@@ -3,6 +3,7 @@ import { prisma } from '../../database/prisma';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
 import { cacheService } from '../../utils/cache';
+import { mailerService } from '../../utils/mailer';
 
 export class DelegationService {
   /**
@@ -16,7 +17,6 @@ export class DelegationService {
 
     const cleanId = medilockerId.trim().toUpperCase();
 
-    // 1. Check cache
     const cached = await cacheService.get(`patient:search:${cleanId}`);
     if (cached) {
       return cached;
@@ -44,7 +44,6 @@ export class DelegationService {
       dob: patient.patientProfile?.dob || null,
     };
 
-    // Cache for 15 minutes
     cacheService.set(`patient:search:${cleanId}`, result, 900);
 
     return result;
@@ -102,6 +101,52 @@ export class DelegationService {
       doctorProfileId = docMapping.doctorId;
     }
 
+    // Check if an active unexpired consultation already exists
+    const now = new Date();
+    const existingActive = await prisma.patientAccessDelegation.findFirst({
+      where: {
+        patientId: patient.id,
+        allottedDoctorId: doctorProfileId,
+        status: DelegationStatus.ACTIVE,
+        expiresAt: { gt: now },
+      },
+    });
+
+    if (existingActive) {
+      return {
+        delegationId: existingActive.id,
+        patientMedilockerId: patient.medilockerId,
+        patientName: patient.patientProfile?.fullName || 'Patient',
+        alreadyActive: true,
+        expiresAt: existingActive.expiresAt,
+        message: 'Active clinical consultation session is already unlocked and valid for this patient.',
+      };
+    }
+
+    // Check if an unexpired pending request already exists for this provider and patient (Deduplication)
+    const existingPending = await prisma.patientAccessDelegation.findFirst({
+      where: {
+        patientId: patient.id,
+        allottedDoctorId: doctorProfileId,
+        status: DelegationStatus.REQUESTED,
+        codeExpiresAt: { gt: now },
+      },
+      include: { allottedDoctor: true },
+    });
+
+    if (existingPending) {
+      return {
+        delegationId: existingPending.id,
+        patientMedilockerId: patient.medilockerId,
+        patientName: patient.patientProfile?.fullName || 'Patient',
+        requestedDurationMinutes: existingPending.requestedDurationMinutes,
+        codeExpiresAt: existingPending.codeExpiresAt,
+        codeValidityMinutes: Math.max(1, Math.round((existingPending.codeExpiresAt!.getTime() - now.getTime()) / 60000)),
+        isExisting: true,
+        message: 'A verification request is already pending for this patient. Please enter the 6-digit code provided by the patient.',
+      };
+    }
+
     // Generate 6-digit dynamic code
     const sixDigitCode = Math.floor(100000 + Math.random() * 900000).toString();
     const codeExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
@@ -124,8 +169,22 @@ export class DelegationService {
     });
 
     logger.info(
-      `Access request created: Doctor ${delegation.allottedDoctor.fullName} requested ${validMinutes}m access to patient ${patient.medilockerId}`
+      `Access request created: Doctor ${delegation.allottedDoctor?.fullName || 'Doctor'} requested ${validMinutes}m access to patient ${patient.medilockerId}`
     );
+
+    if (patient.email) {
+      mailerService
+        .sendAccessRequestEmail({
+          patientEmail: patient.email,
+          patientName: patient.patientProfile?.fullName || 'Valued Patient',
+          doctorName: delegation.allottedDoctor?.fullName || 'Healthcare Provider',
+          clinicName: delegation.allottedDoctor?.clinicName || 'MediLocker Clinic',
+          durationMinutes: validMinutes,
+          sixDigitCode,
+          codeExpiresAt,
+        })
+        .catch((err) => logger.warn('Access request email dispatch failed:', err?.message));
+    }
 
     return {
       delegationId: delegation.id,
@@ -135,6 +194,62 @@ export class DelegationService {
       codeValidityMinutes: 15,
       message: 'Access request sent successfully. Please enter the 6-digit code provided by the patient to complete authorization.',
     };
+  }
+
+  /**
+   * Get pending verification requests for a doctor or hospital
+   */
+  static async getProviderPendingRequests(providerUserId: string, providerRole: UserRole) {
+    let doctorProfileId: string | null = null;
+    let hospitalProfileId: string | null = null;
+
+    if (providerRole === UserRole.DOCTOR) {
+      const docProfile = await prisma.doctorProfile.findUnique({
+        where: { userId: providerUserId },
+      });
+      if (!docProfile) throw new AppError('Doctor profile not found.', 404);
+      doctorProfileId = docProfile.id;
+    } else {
+      const hospProfile = await prisma.hospitalProfile.findUnique({
+        where: { userId: providerUserId },
+      });
+      if (!hospProfile) throw new AppError('Hospital profile not found.', 404);
+      hospitalProfileId = hospProfile.id;
+    }
+
+    const now = new Date();
+
+    const pending = await prisma.patientAccessDelegation.findMany({
+      where: {
+        status: DelegationStatus.REQUESTED,
+        codeExpiresAt: { gt: now },
+        OR: [
+          doctorProfileId ? { allottedDoctorId: doctorProfileId } : null,
+          hospitalProfileId ? { hospitalId: hospitalProfileId } : null,
+        ].filter(Boolean) as any,
+      },
+      include: {
+        patient: {
+          include: { patientProfile: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return pending.map((d) => {
+      const minsLeft = Math.max(1, Math.round((d.codeExpiresAt!.getTime() - now.getTime()) / 60000));
+      return {
+        delegationId: d.id,
+        patientId: d.patient.id,
+        patientMedilockerId: d.patient.medilockerId,
+        patientName: d.patient.patientProfile?.fullName || 'Patient',
+        dob: d.patient.patientProfile?.dob || null,
+        requestedDurationMinutes: d.requestedDurationMinutes,
+        codeExpiresAt: d.codeExpiresAt,
+        minsLeft,
+        createdAt: d.createdAt,
+      };
+    });
   }
 
   /**
@@ -239,7 +354,21 @@ export class DelegationService {
       },
     });
 
-    logger.info(`Doctor ${delegation.allottedDoctor.fullName} unlocked patient ${patient.medilockerId} until ${expiresAt.toISOString()}`);
+    logger.info(`Doctor ${delegation.allottedDoctor?.fullName || 'Doctor'} unlocked patient ${patient.medilockerId} until ${expiresAt.toISOString()}`);
+
+    if (patient.email) {
+      mailerService
+        .sendAccessAuthorizedEmail({
+          recipientEmail: patient.email,
+          recipientName: patient.patientProfile?.fullName || 'Valued Patient',
+          doctorName: delegation.allottedDoctor?.fullName || 'Doctor',
+          patientName: patient.patientProfile?.fullName || 'Patient',
+          durationMinutes: delegation.requestedDurationMinutes,
+          expiresAt,
+          role: 'PATIENT',
+        })
+        .catch((err) => logger.warn('Access authorized email dispatch failed:', err?.message));
+    }
 
     return {
       success: true,

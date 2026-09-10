@@ -93,6 +93,21 @@ export class DelegationController {
   }
 
   /**
+   * Doctor/Hospital views unexpired pending verification requests
+   */
+  static async getProviderPendingRequests(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await DelegationService.getProviderPendingRequests(
+        req.user!.userId,
+        req.user!.role
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Doctor views authorized patient's full records and dashboard
    */
   static async getPatientFullData(req: Request, res: Response, next: NextFunction) {

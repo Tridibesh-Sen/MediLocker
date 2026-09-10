@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MediLocker — Your Unified Digital Health Sanctuary</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="shortcut icon" href="favicon.ico">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,9 +18,8 @@
 
   <!-- Site Navigation Header -->
   <header class="site-header">
-    <a class="brand" href="index.html">
-      <span class="brand-mark">M</span>
-      <span>Medi<span>Locker</span></span>
+    <a class="brand" href="index.html" aria-label="MediLocker Home">
+      <img src="logo-horizontal.png" alt="MediLocker" class="brand-logo" height="46">
     </a>
 
     <nav class="nav-links">
@@ -45,21 +48,22 @@
     <!-- Hero Section -->
     <section class="hero">
       <div class="hero-copy">
-        <div class="eyebrow">
-          <span class="eyebrow-dot"></span>
-          <span data-i18n="eyebrow">ABHA-Compliant Digital Health Ecosystem</span>
+        <div class="eyebrow" style="display:flex;align-items:center;gap:8px;">
+          <span class="eyebrow-dot" style="background:#a68eb8;"></span>
+          <span data-i18n="eyebrow">A CALMER WAY TO MANAGE HEALTHCARE</span>
         </div>
         <h1>
-          <span data-i18n="hero1">Your complete health story,</span><br>
-          <em data-i18n="hero2">in one secure locker.</em>
+          <span data-i18n="hero1">Your health</span><br>
+          <span>story,</span><br>
+          <em data-i18n="hero2" style="font-style:normal;">in one place.</em>
         </h1>
         <p class="hero-text" data-i18n="heroText">
-          MediLocker bridges the divide between patients, doctors, and hospitals. From AI-driven prescription OCR and daily pill routines to time-bounded 6-digit OTP provider authorization, your health data is organized, intelligent, and sovereign.
+          MediLocker brings patient records, prescriptions, reports and medication routines into one beautifully organized digital experience.
         </p>
 
         <div class="hero-buttons">
-          <a class="primary-btn" href="signup.html" data-i18n="enter">Get Your Unit ID ↗</a>
-          <a class="secondary-btn" href="#features" data-i18n="seeHow">Explore All Features ↓</a>
+          <a class="primary-btn" href="signup.html" data-i18n="enter">Enter MediLocker ↗</a>
+          <a class="secondary-btn" href="#features" data-i18n="seeHow">See how it works ↓</a>
         </div>
 
         <div class="patient-note">
@@ -69,8 +73,8 @@
             <span>H</span>
           </div>
           <div>
-            <strong data-i18n="designed">Designed around Patient Sovereignty</strong>
-            <small data-i18n="records">Zero mock data. Instant revocation. Complete cryptographic integrity.</small>
+            <strong data-i18n="designed">Designed around the patient</strong>
+            <small data-i18n="records">Records stay organized from first visit to follow-up.</small>
           </div>
         </div>
       </div>
@@ -79,7 +83,7 @@
       <div class="health-card landing-card">
         <div class="card-topline">
           <span>PATIENT SOVEREIGN SPACE</span>
-          <span class="live-dot">● <span data-i18n="secured">live & secured</span></span>
+          <span class="live-dot" style="color:#16a34a;">● <span data-i18n="secured">secured</span></span>
         </div>
         <h2>Unified Health Workspace</h2>
         
@@ -148,166 +152,169 @@
       </div>
     </section>
 
-    <!-- Detailed Features Grid Section -->
+    <!-- Detailed Features Columns Section (Modern Columns with Points) -->
     <section class="features-detailed-section" id="features">
       <div class="section-heading">
-        <span class="eyebrow">COMPREHENSIVE CAPABILITIES</span>
-        <h2>Engineered for Clinical Precision.</h2>
-        <p>Every feature in MediLocker is built around clinical safety, patient sovereignty, and seamless continuity of healthcare.</p>
+        <span class="eyebrow">SOVEREIGN HEALTH ARCHITECTURE</span>
+        <h2>Engineered for Clinical Continuity.</h2>
+        <p>A unified digital ecosystem bridging patients, attending physicians, and accredited hospital networks.</p>
       </div>
 
-      <div class="features-grid">
-        <!-- Feature 1 -->
-        <article class="feature-card-item">
+      <div class="features-columns-grid">
+        <!-- Column 1: Patient Sovereign Vault -->
+        <article class="feature-column-card">
           <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:var(--lav);color:var(--plum);">🪪</div>
-              <span class="feature-badge-pill">IDENTITY</span>
+            <div class="card-topline">
+              <span>PATIENT SOVEREIGN VAULT</span>
+              <span class="live-dot" style="color:#16a34a;">● Live & Encrypted</span>
             </div>
-            <h3>ABHA-Aligned Digital Health ID</h3>
-            <p>Generates an official-style <code>ML-XXX-XXX-XXX</code> unit identifier upon registration. Enforces strictly 1 account per email address and isolates patient data.</p>
+            <h3>Sovereign Vault & Ongoing Care</h3>
+
+            <div class="workspace-steps">
+              <div class="workspace-step">
+                <span>01</span>
+                <div>
+                  <strong>Consultation Date & Ongoing Course Tracking</strong>
+                  <p>Upload prescriptions and lab records with the verified clinical consultation date. Toggle ongoing medication status to keep completed courses archived without polluting today's active checklist.</p>
+                </div>
+              </div>
+
+              <div class="workspace-step">
+                <span>02</span>
+                <div>
+                  <strong>Prescriptions & Diagnostics Inline Viewer</strong>
+                  <p>Securely review uploaded medical records via authenticated inline viewer (<code>GET /api/v1/records/:id/view</code>), with zero mock data and MIME-typed streaming.</p>
+                </div>
+              </div>
+
+              <div class="workspace-step">
+                <span>03</span>
+                <div>
+                  <strong>Permanent Cascading Record Deletion</strong>
+                  <p>True patient data sovereignty: permanently delete any consultation event or prescription. Automatically cascades to remove associated daily tasks, medication rows, and storage files.</p>
+                </div>
+              </div>
+
+              <div class="workspace-step">
+                <span>04</span>
+                <div>
+                  <strong>Smart Daily To-Do & 2-Day Refill Alerts</strong>
+                  <p>Daily 12:00 AM dynamic checklist renewal across Morning, Afternoon, and Night slots, paired with automated predictive warnings 2 days before medication stock runs out.</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <ul class="feature-card-bullets">
-            <li>Strict deduplication by registered email</li>
-            <li>Role-based profiles: Patient, Doctor, Hospital</li>
-            <li>Universal identifier for clinical interoperability</li>
-          </ul>
+
+          <div class="landing-card-footer">
+            <span>Course Filter</span>
+            <span>Inline Viewer</span>
+            <span>Cascading Delete</span>
+            <span>12 AM Renewal</span>
+          </div>
         </article>
 
-        <!-- Feature 2 -->
-        <article class="feature-card-item">
+        <!-- Column 2: Doctor Clinical Practice -->
+        <article class="feature-column-card">
           <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:var(--sage);color:#465743;">📄</div>
-              <span class="feature-badge-pill">INTELLIGENCE</span>
+            <div class="card-topline">
+              <span>CLINICAL PRACTICE WORKSPACE</span>
+              <span class="live-dot" style="color:#6366f1;">● Verified Providers</span>
             </div>
-            <h3>AI Clinical OCR & Ingestion</h3>
-            <p>Upload photos or PDFs of physical prescriptions, lab reports, and discharge summaries. Gemini multimodal AI parses clinical entities without manual data entry.</p>
+            <h3>Consultations & Clinical Schedule</h3>
+
+            <div class="workspace-steps">
+              <div class="workspace-step">
+                <span>01</span>
+                <div>
+                  <strong>Nearby Doctors Directory & Booking</strong>
+                  <p>Explore verified practitioners filtered by 'Previously Consulted' (matched via past prescriptions or delegations) and 'In Your Area' local geographic matching, with seamless slot booking.</p>
+                </div>
+              </div>
+
+              <div class="workspace-step">
+                <span>02</span>
+                <div>
+                  <strong>Live Doctor Appointments Queue</strong>
+                  <p>Dedicated clinical workspace tracking Today's Visits, Pending Confirmations, and full history with real-time lifecycle actions: Confirm, Mark Completed, or Cancel.</p>
+                </div>
+              </div>
+
+              <div class="workspace-step">
+                <span>03</span>
+                <div>
+                  <strong>Pre-Consultation Clinical Checklist</strong>
+                  <p>Automated 3-point clinical preparation checklist for every upcoming visit: review history & allergies, prepare treatment notes, and confirm attendance with progress tracking.</p>
+                </div>
+              </div>
+
+              <div class="workspace-step">
+                <span>04</span>
+                <div>
+                  <strong>Direct Record Unlock & 15-Min Window</strong>
+                  <p>One-click unlock from appointment queue pre-fills patient Unit ID with a 15-minute persistent verification window that survives browser logout and re-login.</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <ul class="feature-card-bullets">
-            <li>Automated doctor & clinic name extraction</li>
-            <li>Diagnoses & clinical test detection</li>
-            <li>Medicines, strengths, frequencies & course durations</li>
-          </ul>
+
+          <div class="landing-card-footer">
+            <span>Nearby Directory</span>
+            <span>Today's Visits</span>
+            <span>Clinical Checklist</span>
+            <span>15-Min OTP</span>
+          </div>
         </article>
 
-        <!-- Feature 3 -->
-        <article class="feature-card-item">
+        <!-- Column 3: Institutional Governance & Communication -->
+        <article class="feature-column-card">
           <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:var(--peach);color:#704e38;">📅</div>
-              <span class="feature-badge-pill">CHRONOLOGY</span>
+            <div class="card-topline">
+              <span>INSTITUTIONAL GOVERNANCE</span>
+              <span class="live-dot" style="color:#8b5cf6;">● Enterprise Grade</span>
             </div>
-            <h3>Interactive Clinical Timeline</h3>
-            <p>Chronologically weaves consultations, diagnostic reports, surgeries, and prescriptions into a searchable, interactive health history.</p>
-          </div>
-          <ul class="feature-card-bullets">
-            <li>Color-coded consultation & lab badges</li>
-            <li>Filter by Prescriptions, Reports, and Scans</li>
-            <li>Deep search across diagnoses and medication names</li>
-          </ul>
-        </article>
+            <h3>Accreditation, Schemes & SMTP</h3>
 
-        <!-- Feature 4 -->
-        <article class="feature-card-item">
-          <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:#e8e0ee;color:#514267;">💊</div>
-              <span class="feature-badge-pill">ADHERENCE</span>
-            </div>
-            <h3>Smart Daily Medication To-Do</h3>
-            <p>Converts prescription dosage instructions into 4 daily time-slots: Morning, Afternoon, Evening, and Night, complete with interactive checkbox tracking.</p>
-          </div>
-          <ul class="feature-card-bullets">
-            <li>Visual circular progress adherence ring</li>
-            <li>Timing instructions (e.g. "After food", "Before bed")</li>
-            <li>Automated sync with active prescription courses</li>
-          </ul>
-        </article>
+            <div class="workspace-steps">
+              <div class="workspace-step">
+                <span>01</span>
+                <div>
+                  <strong>Doctor Degree & Live Webcam Capture</strong>
+                  <p>Professional onboarding capturing doctor degrees (MBBS, MD, MS) and council registration certificate verification via embedded live webcam snapshot preview.</p>
+                </div>
+              </div>
 
-        <!-- Feature 5 -->
-        <article class="feature-card-item">
-          <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:#faecec;color:#701d1d;">❤️</div>
-              <span class="feature-badge-pill">WELLNESS</span>
-            </div>
-            <h3>Daily Feeling & Severity Tracker</h3>
-            <p>Log holistic wellness on a 5-point clinical scale (Great, Good, Okay, Poor, Critical). Alerts doctors immediately when severe distress or pain is recorded.</p>
-          </div>
-          <ul class="feature-card-bullets">
-            <li>Interactive 7-day visual health heatmap</li>
-            <li>Custom patient symptom notes and pain logs</li>
-            <li>Real-time triage integration with Medi-AI</li>
-          </ul>
-        </article>
+              <div class="workspace-step">
+                <span>02</span>
+                <div>
+                  <strong>Hospital Ownership & Government Schemes</strong>
+                  <p>Private vs Public hospital classification with multi-select support for national health schemes: PM-JAY (Ayushman Bharat), CGHS, ECHS, SGHS, and Chief Minister schemes.</p>
+                </div>
+              </div>
 
-        <!-- Feature 6 -->
-        <article class="feature-card-item">
-          <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:#faf2e6;color:#875217;">📦</div>
-              <span class="feature-badge-pill">INVENTORY</span>
-            </div>
-            <h3>Medicine Cabinet & Barcode/Batch Scanner</h3>
-            <p>Digitize your home first-aid and pharmacy cabinet. Read standard GTIN barcodes or use camera feed batch readers to capture expiry dates and salt details.</p>
-          </div>
-          <ul class="feature-card-bullets">
-            <li>Active salt decomposition & OTC safety advice</li>
-            <li>Automated refill alert when supply &lt; 5 days</li>
-            <li>Expiry date warnings and discard recommendations</li>
-          </ul>
-        </article>
+              <div class="workspace-step">
+                <span>03</span>
+                <div>
+                  <strong>Multi-Channel SMTP Mailing Engine</strong>
+                  <p>Live Google SMTP engine delivering 7 automated, branded lifecycle email templates for Welcome, Access Passcodes, Uploads, Bookings, Status Updates, and Severe Alerts.</p>
+                </div>
+              </div>
 
-        <!-- Feature 7 -->
-        <article class="feature-card-item">
-          <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:#ebf5ec;color:#2e5a33;">🤖</div>
-              <span class="feature-badge-pill">CLINICAL AI</span>
+              <div class="workspace-step">
+                <span>04</span>
+                <div>
+                  <strong>Zero-Mock Security & Audit Trails</strong>
+                  <p>Zero Protected Health Information (PHI) leaked during provider searches. Tamper-evident audit logs and hardcoded emergency triage filters (112 / 108 emergency bypass).</p>
+                </div>
+              </div>
             </div>
-            <h3>Medi-AI Assistant with Guardrails</h3>
-            <p>An evidence-based health companion with rigid clinical safety guardrails. Confined strictly to daily OTC care, first aid, and symptom triaging.</p>
           </div>
-          <ul class="feature-card-bullets">
-            <li>Intercepts coding, math, and non-medical queries</li>
-            <li>Refuses autonomous prescribing of Schedule H/X drugs</li>
-            <li>Cross-references patient allergies and ongoing medications</li>
-          </ul>
-        </article>
 
-        <!-- Feature 8 -->
-        <article class="feature-card-item">
-          <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:var(--lav);color:var(--plum);">🔐</div>
-              <span class="feature-badge-pill">AUTHORIZATION</span>
-            </div>
-            <h3>Time-Bound 6-Digit Doctor Delegation</h3>
-            <p>Doctors query patient Unit IDs and receive strictly Name & DOB. Patients authorize access with a 15-minute 6-digit OTP for 30 minutes up to 7 days.</p>
+          <div class="landing-card-footer">
+            <span>Webcam Verified</span>
+            <span>PM-JAY & CGHS</span>
+            <span>Google SMTP</span>
+            <span>Zero Mock Data</span>
           </div>
-          <ul class="feature-card-bullets">
-            <li>Zero Protected Health Information (PHI) leaked during search</li>
-            <li>Configurable access durations: 30m, 1h, 6h, 24h, 7 days</li>
-            <li>Instant 1-click patient revocation at any second</li>
-          </ul>
-        </article>
-
-        <!-- Feature 9 -->
-        <article class="feature-card-item">
-          <div>
-            <div class="feature-card-top">
-              <div class="feature-icon-badge" style="background:var(--sage);color:#465743;">📊</div>
-              <span class="feature-badge-pill">DIAGNOSTICS</span>
-            </div>
-            <h3>Lab Findings & Biometrics Tracker</h3>
-            <p>Log and visualize key health vitals including Blood Pressure (Sys/Dia), Fasting Glucose, HbA1c, Heart Rate, and Blood Oxygen (SpO2) over time.</p>
-          </div>
-          <ul class="feature-card-bullets">
-            <li>Color-coded clinical threshold status (Normal, Alert)</li>
-            <li>Historical logs with timestamped recordings</li>
-            <li>One-click summary export for consultation review</li>
-          </ul>
         </article>
       </div>
     </section>
@@ -425,14 +432,22 @@
 
   <!-- Site Footer -->
   <footer>
-    <div>
-      <strong>MediLocker</strong> · <span data-i18n="footer">A sovereign digital sanctuary for organized healthcare.</span>
-      <p style="margin:4px 0 0;font-size:13px;opacity:0.7;">Aligned with Ayushman Bharat Digital Mission (ABDM) architectural standards. Powered by live Supabase PostgreSQL.</p>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <img src="logo-icon.png" alt="MediLocker" style="height:44px;width:auto;border-radius:10px;object-fit:contain;">
+      <div>
+        <strong>MediLocker</strong> · <span data-i18n="footer">A sovereign digital sanctuary for organized healthcare.</span>
+        <p style="margin:4px 0 0;font-size:13px;opacity:0.7;">Aligned with Ayushman Bharat Digital Mission (ABDM) architectural standards. Powered by live Supabase PostgreSQL.</p>
+      </div>
     </div>
-    <div style="display:flex;gap:20px;align-items:center;">
-      <a href="login.html" style="font-weight:700;color:var(--plum);">Sign In</a>
-      <a href="signup.html" style="font-weight:700;color:var(--plum);">Register</a>
-      <span>© 2026 MediLocker</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;">
+      <div style="display:flex;gap:20px;align-items:center;">
+        <a href="login.html" style="font-weight:700;color:var(--plum);">Sign In</a>
+        <a href="signup.html" style="font-weight:700;color:var(--plum);">Register</a>
+        <span>© 2026 MediLocker</span>
+      </div>
+      <div style="font-size:13px;color:var(--muted);font-weight:600;">
+        Developed by Peak Constructors --Tridibesh Sen
+      </div>
     </div>
   </footer>
 

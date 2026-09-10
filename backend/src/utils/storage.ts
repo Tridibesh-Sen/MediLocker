@@ -11,13 +11,11 @@ export interface UploadResult {
   bytes: number;
 }
 
-// Supabase Storage setup
 const isSupabaseStorageConfigured = Boolean(env.SUPABASE_URL && env.SUPABASE_KEY);
 const supabase = isSupabaseStorageConfigured
   ? createClient(env.SUPABASE_URL, env.SUPABASE_KEY)
   : null;
 
-// Cloudinary setup
 const isCloudinaryConfigured = Boolean(
   env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET
 );
@@ -35,7 +33,6 @@ if (isSupabaseStorageConfigured) {
   logger.warn('Cloud storage not configured. Using local disk storage fallback.');
 }
 
-// Upload medical document
 export async function uploadMedicalDocument(
   fileBuffer: Buffer,
   originalFilename: string,
@@ -43,7 +40,6 @@ export async function uploadMedicalDocument(
 ): Promise<UploadResult> {
   const safeFilename = `${Date.now()}-${originalFilename.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-  // 1. Supabase Storage
   if (isSupabaseStorageConfigured && supabase) {
     try {
       const bucket = env.SUPABASE_BUCKET || 'medical-records';
@@ -92,7 +88,6 @@ export async function uploadMedicalDocument(
     }
   }
 
-  // 2. Cloudinary
   if (isCloudinaryConfigured) {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -116,7 +111,6 @@ export async function uploadMedicalDocument(
     });
   }
 
-  // 3. Local Disk Storage Fallback
   const uploadsDir = path.join(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });

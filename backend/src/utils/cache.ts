@@ -132,13 +132,6 @@ class CacheService {
     logger.debug(`🧹 Invalidated ${count} cache keys with prefix: [${prefix}]`);
   }
 
-  // ==========================================
-  // High-Frequency Domain Model Cache Helpers
-  // ==========================================
-
-  /**
-   * User Profile (Cached for 10 minutes)
-   */
   async getUserProfile<T = any>(userId: string): Promise<T | null> {
     return this.get<T>(`user:profile:${userId}`);
   }

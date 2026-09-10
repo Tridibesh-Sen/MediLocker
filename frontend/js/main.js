@@ -191,6 +191,130 @@
     document.querySelectorAll('input[name=role]').forEach(r=>r.addEventListener('change',()=>{role=r.value;setSignupRole(role);}));
     setSignupRole(role);
 
+    // Certificate Upload & Camera Capture Logic
+    let activeCameraTarget = null; // 'doctor' | 'hospital'
+    let cameraStream = null;
+
+    const cameraModal = document.getElementById('cameraModal');
+    const cameraVideo = document.getElementById('cameraVideo');
+    const cameraCanvas = document.getElementById('cameraCanvas');
+    const takePhotoBtn = document.getElementById('takePhotoBtn');
+    const closeCameraBtn = document.getElementById('closeCameraModal');
+    const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      cameraModal?.classList.add('hidden');
+    }
+
+    async function startCamera(target) {
+      activeCameraTarget = target;
+      if (!cameraModal || !cameraVideo) return;
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        cameraVideo.srcObject = cameraStream;
+        cameraModal.classList.remove('hidden');
+      } catch (err) {
+        alert('Could not access device camera. Please check camera permissions or upload a file directly.');
+      }
+    }
+
+    closeCameraBtn?.addEventListener('click', stopCamera);
+    cancelCameraBtn?.addEventListener('click', stopCamera);
+
+    takePhotoBtn?.addEventListener('click', () => {
+      if (!cameraVideo || !cameraCanvas) return;
+      cameraCanvas.width = cameraVideo.videoWidth || 640;
+      cameraCanvas.height = cameraVideo.videoHeight || 480;
+      const ctx = cameraCanvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+      const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.85);
+
+      if (activeCameraTarget === 'doctor') {
+        const certInput = document.getElementById('doctorCertificateUrl');
+        const certName = document.getElementById('doctorCertName');
+        const certPreview = document.getElementById('doctorCertPreview');
+        const certImg = document.getElementById('doctorCertPreviewImg');
+        if (certInput) certInput.value = dataUrl;
+        if (certName) certName.textContent = '✓ Live Camera Capture Attached';
+        if (certImg) certImg.src = dataUrl;
+        if (certPreview) certPreview.style.display = 'block';
+      } else if (activeCameraTarget === 'hospital') {
+        const certInput = document.getElementById('hospitalCertificateUrl');
+        const certName = document.getElementById('hospitalCertName');
+        const certPreview = document.getElementById('hospitalCertPreview');
+        const certImg = document.getElementById('hospitalCertPreviewImg');
+        if (certInput) certInput.value = dataUrl;
+        if (certName) certName.textContent = '✓ Live Camera Capture Attached';
+        if (certImg) certImg.src = dataUrl;
+        if (certPreview) certPreview.style.display = 'block';
+      }
+      stopCamera();
+    });
+
+    // Doctor cert upload buttons
+    const docUploadBtn = document.getElementById('doctorCertUploadBtn');
+    const docFileInput = document.getElementById('doctorCertFileInput');
+    docUploadBtn?.addEventListener('click', () => docFileInput?.click());
+    docFileInput?.addEventListener('change', () => {
+      const file = docFileInput.files?.[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (e) => {
+        const val = e.target.result;
+        const certInput = document.getElementById('doctorCertificateUrl');
+        const certName = document.getElementById('doctorCertName');
+        const certPreview = document.getElementById('doctorCertPreview');
+        const certImg = document.getElementById('doctorCertPreviewImg');
+        if (certInput) certInput.value = val;
+        if (certName) certName.textContent = `✓ ${file.name}`;
+        if (certImg && file.type.startsWith('image/')) {
+          certImg.src = val;
+          if (certPreview) certPreview.style.display = 'block';
+        }
+      };
+      r.readAsDataURL(file);
+    });
+    document.getElementById('doctorCertCameraBtn')?.addEventListener('click', () => startCamera('doctor'));
+
+    // Hospital cert upload buttons
+    const hospUploadBtn = document.getElementById('hospitalCertUploadBtn');
+    const hospFileInput = document.getElementById('hospitalCertFileInput');
+    hospUploadBtn?.addEventListener('click', () => hospFileInput?.click());
+    hospFileInput?.addEventListener('change', () => {
+      const file = hospFileInput.files?.[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (e) => {
+        const val = e.target.result;
+        const certInput = document.getElementById('hospitalCertificateUrl');
+        const certName = document.getElementById('hospitalCertName');
+        const certPreview = document.getElementById('hospitalCertPreview');
+        const certImg = document.getElementById('hospitalCertPreviewImg');
+        if (certInput) certInput.value = val;
+        if (certName) certName.textContent = `✓ ${file.name}`;
+        if (certImg && file.type.startsWith('image/')) {
+          certImg.src = val;
+          if (certPreview) certPreview.style.display = 'block';
+        }
+      };
+      r.readAsDataURL(file);
+    });
+    document.getElementById('hospitalCertCameraBtn')?.addEventListener('click', () => startCamera('hospital'));
+
+    // Schemes radio listener
+    document.querySelectorAll('input[name="govtSchemesAvailable"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const schemesList = document.getElementById('schemesOptionsList');
+        if (schemesList) {
+          schemesList.style.display = radio.value === 'yes' ? 'flex' : 'none';
+        }
+      });
+    });
+
     f.addEventListener('submit',async e=>{
       e.preventDefault();
       setSignupRole(role);
@@ -229,6 +353,8 @@
           doctorId:fd.get('doctorId')||'DOC-'+Date.now(),
           registrationNumber:fd.get('registrationNumber')||'REG-'+Date.now(),
           specialization:fd.get('specialization')||'General Medicine',
+          degree:fd.get('doctorDegree')||'MBBS',
+          certificateUrl:fd.get('doctorCertificateUrl')||undefined,
           registrationDate:fd.get('registrationDate')||undefined,
           experience:Number(fd.get('experience'))||0,
           clinicName:fd.get('clinicName')||'Medical Clinic',
@@ -238,6 +364,9 @@
           state:fd.get('doctorState')||undefined
         });
       }else{
+        const schemesChecked = Array.from(f.querySelectorAll('input[name="schemeItem"]:checked')).map(cb => cb.value);
+        const schemesAvail = fd.get('govtSchemesAvailable') === 'yes';
+
         Object.assign(payload,{
           name:fd.get('hospitalName')||'Hospital',
           email:fd.get('hospitalEmail')||'',
@@ -249,8 +378,14 @@
           city:fd.get('hospitalCity')||'City',
           state:fd.get('hospitalState')||undefined,
           hospitalType:fd.get('hospitalType')||'General Hospital',
+          hospitalOwnership:fd.get('hospitalOwnership')||'PRIVATE',
           beds:Number(fd.get('beds'))||100,
-          representative:fd.get('representative')||undefined
+          representative:fd.get('representative')||undefined,
+          mdName:fd.get('mdName')||undefined,
+          mdPhone:fd.get('mdPhone')||undefined,
+          govtSchemesAvailable:schemesAvail,
+          govtSchemesList:schemesAvail?schemesChecked:[],
+          registrationCertificateUrl:fd.get('hospitalCertificateUrl')||undefined
         });
       }
 
@@ -276,7 +411,7 @@
         localStorage.setItem('medilockerLastCreatedRole',role);
         
         document.getElementById('generatedUnit').textContent=unit;
-        document.getElementById('unitMessage').innerHTML=`Your <strong>${esc(role)}</strong> account has been created in <strong>Supabase</strong>. Save <strong>${esc(unit)}</strong> and use it with <strong>${esc(payload.email)}</strong> to sign in.`;
+        document.getElementById('unitMessage').innerHTML=`Your <strong>${esc(role)}</strong> account has been created in <strong>Supabase</strong>. Welcome email with your permanent Unit ID has been dispatched. Save <strong>${esc(unit)}</strong> and use it with <strong>${esc(payload.email)}</strong> to sign in.`;
         document.getElementById('unitModal')?.classList.remove('hidden');
       }catch(err){
         alert('Server is down or unreachable. Could not connect to Supabase database. Please check your backend connection.');
@@ -299,31 +434,124 @@
   }
 
   async function bindPatientUI(){
-    const s=requireSession('patient');
-    if(!s)return;
-    const token=getToken();
+    const isProfilePage = !!document.getElementById('profileForm');
+    let s = getSession();
+    const token = getToken();
 
-    const render=(u)=>{
-      document.querySelectorAll('[data-user-name]').forEach(e=>e.textContent=u.name||'Patient');
+    if (isProfilePage) {
+      if (!s || !token) {
+        location.href = 'login.html';
+        return;
+      }
+    } else {
+      s = requireSession('patient');
+      if (!s) return;
+    }
+
+    const render = (u) => {
+      const role = (u.role || s.role || 'patient').toLowerCase();
+      document.querySelectorAll('[data-user-name]').forEach(e=>e.textContent=u.name||'User');
       document.querySelectorAll('[data-user-email]').forEach(e=>e.textContent=u.email||'');
       document.querySelectorAll('[data-user-unit]').forEach(e=>e.textContent=u.medilockerId||s.unit);
       document.querySelectorAll('[data-user-initials]').forEach(e=>e.textContent=initials(u.name));
-      const fields={
-        fullName:u.name||'',
-        dateBirth:u.dob?new Date(u.dob).toLocaleDateString():'Not provided',
-        bloodGroup:u.bloodGroup||'Not specified',
-        phone:u.phone||'Not provided',
-        email:u.email||'',
-        location:[u.city,u.state].filter(Boolean).join(', ')||'Not provided',
-        govid:u.govid||'Not provided',
-        insurance:u.insurance||'Not provided',
-        allergy:(u.allergies&&u.allergies.length)?u.allergies.join(', '):'None recorded',
-        medications:(u.baselineMedications&&u.baselineMedications.length)?u.baselineMedications.join(', '):'None recorded',
-        history:(u.chronicConditions&&u.chronicConditions.length)?u.chronicConditions.join(', '):'Not provided',
-        emergency:u.emergencyContact?.name||'Not configured',
-        address:u.address||'Not provided'
-      };
-      Object.entries(fields).forEach(([k,v])=>document.querySelectorAll(`[data-field="${k}"]`).forEach(e=>e.value=v));
+
+      if (isProfilePage) {
+        const rolePill = document.getElementById('profileRolePill');
+        if (rolePill) rolePill.textContent = `${role.toUpperCase()} ACCOUNT`;
+
+        const patSec = document.getElementById('patientProfileSection');
+        const docSec = document.getElementById('doctorProfileSection');
+        const hospSec = document.getElementById('hospitalProfileSection');
+
+        if (patSec) patSec.classList.toggle('hidden', role !== 'patient');
+        if (docSec) docSec.classList.toggle('hidden', role !== 'doctor');
+        if (hospSec) hospSec.classList.toggle('hidden', role !== 'hospital');
+
+        if (role === 'patient') {
+          const fields = {
+            fullName: u.name || '',
+            dob: u.dob ? u.dob.split('T')[0] : '',
+            bloodGroup: u.bloodGroup || 'Not specified',
+            phone: u.phone || '',
+            email: u.email || '',
+            govid: u.govid || '',
+            insurance: u.insurance || '',
+            allergy: (u.allergies && u.allergies.length) ? u.allergies.join(', ') : '',
+            medications: (u.baselineMedications && u.baselineMedications.length) ? u.baselineMedications.join(', ') : '',
+            history: (u.chronicConditions && u.chronicConditions.length) ? u.chronicConditions.join(', ') : '',
+            emergencyName: u.emergencyContact?.name || '',
+            emergencyPhone: u.emergencyContact?.phone || '',
+            city: u.city || '',
+            state: u.state || '',
+            pincode: u.pincode || '',
+            address: u.address || ''
+          };
+          Object.entries(fields).forEach(([k, v]) => {
+            document.querySelectorAll(`[data-field="${k}"]`).forEach(e => {
+              if (e.tagName === 'SELECT') e.value = v;
+              else e.value = v;
+            });
+          });
+        } else if (role === 'doctor') {
+          const doc = u.doctorProfile || {};
+          const fields = {
+            docFullName: u.name || '',
+            degree: doc.degree || '',
+            specialization: doc.specialization || '',
+            experience: doc.experienceYears ?? '',
+            docPhone: u.phone || '',
+            docEmail: u.email || '',
+            clinicName: doc.clinicName || '',
+            docCity: doc.city || u.city || '',
+            docState: doc.state || u.state || '',
+            clinicAddress: doc.clinicAddress || u.address || ''
+          };
+          Object.entries(fields).forEach(([k, v]) => {
+            document.querySelectorAll(`[data-field="${k}"]`).forEach(e => e.value = v);
+          });
+        } else if (role === 'hospital') {
+          const hosp = u.hospitalProfile || {};
+          const fields = {
+            hospName: hosp.hospitalName || u.name || '',
+            hospPhone: u.phone || '',
+            hospEmail: hosp.officialEmail || u.email || '',
+            hospitalOwnership: hosp.hospitalOwnership || 'PRIVATE',
+            hospitalType: hosp.hospitalType || '',
+            bedCapacity: hosp.bedCapacity ?? '',
+            managingDirectorName: hosp.managingDirectorName || '',
+            managingDirectorContact: hosp.managingDirectorContact || '',
+            authorizedRepresentative: hosp.authorizedRepresentative || '',
+            govtSchemesAvailable: String(!!hosp.govtSchemesAvailable),
+            govtSchemesList: Array.isArray(hosp.govtSchemesList) ? hosp.govtSchemesList.join(', ') : '',
+            hospCity: hosp.city || u.city || '',
+            hospState: hosp.state || u.state || '',
+            hospAddress: hosp.address || u.address || ''
+          };
+          Object.entries(fields).forEach(([k, v]) => {
+            document.querySelectorAll(`[data-field="${k}"]`).forEach(e => {
+              if (e.tagName === 'SELECT') e.value = v;
+              else e.value = v;
+            });
+          });
+        }
+      } else {
+        const fields={
+          fullName:u.name||'',
+          dateBirth:u.dob?new Date(u.dob).toLocaleDateString():'Not provided',
+          bloodGroup:u.bloodGroup||'Not specified',
+          phone:u.phone||'Not provided',
+          email:u.email||'',
+          location:[u.city,u.state].filter(Boolean).join(', ')||'Not provided',
+          govid:u.govid||'Not provided',
+          insurance:u.insurance||'Not provided',
+          allergy:(u.allergies&&u.allergies.length)?u.allergies.join(', '):'None recorded',
+          medications:(u.baselineMedications&&u.baselineMedications.length)?u.baselineMedications.join(', '):'None recorded',
+          history:(u.chronicConditions&&u.chronicConditions.length)?u.chronicConditions.join(', '):'Not provided',
+          emergency:u.emergencyContact?.name||'Not configured',
+          address:u.address||'Not provided'
+        };
+        Object.entries(fields).forEach(([k,v])=>document.querySelectorAll(`[data-field="${k}"]`).forEach(e=>e.value=v));
+      }
     };
 
     // 1. Instant Zero-Latency Render from Client Cache
@@ -331,6 +559,136 @@
     if (cachedProfile) {
       render(cachedProfile);
       window.currentUserProfile = cachedProfile;
+    }
+
+    // Profile editing functionality
+    if (isProfilePage) {
+      const toggleBtn = document.getElementById('toggleEditProfileBtn');
+      const editActions = document.getElementById('profileEditActions');
+      const cancelBtn = document.getElementById('cancelProfileEditBtn');
+      const profileForm = document.getElementById('profileForm');
+      const saveBtn = document.getElementById('saveProfileBtn');
+
+      let isEditing = false;
+      const setEditMode = (editing) => {
+        isEditing = editing;
+        if (toggleBtn) toggleBtn.style.display = editing ? 'none' : 'inline-block';
+        if (editActions) editActions.classList.toggle('hidden', !editing);
+
+        const currentRole = (cachedProfile?.role || s.role || 'patient').toLowerCase();
+        let targetSec = document.getElementById(`${currentRole}ProfileSection`);
+        if (!targetSec) targetSec = profileForm;
+
+        targetSec.querySelectorAll('input, select, textarea').forEach(el => {
+          if (el.name === 'email' || el.name === 'docEmail' || el.name === 'hospEmail') return; // immutable email
+          if (editing) {
+            el.removeAttribute('readonly');
+            el.removeAttribute('disabled');
+          } else {
+            el.setAttribute('readonly', 'readonly');
+            if (el.tagName === 'SELECT') el.setAttribute('disabled', 'disabled');
+          }
+        });
+      };
+
+      toggleBtn?.addEventListener('click', () => setEditMode(true));
+      cancelBtn?.addEventListener('click', () => {
+        setEditMode(false);
+        if (window.currentUserProfile) render(window.currentUserProfile);
+      });
+
+      profileForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const currentRole = (cachedProfile?.role || s.role || 'patient').toLowerCase();
+        const fd = new FormData(profileForm);
+        let updatePayload = {};
+
+        if (currentRole === 'patient') {
+          updatePayload = {
+            name: fd.get('fullName') || undefined,
+            dob: fd.get('dob') || undefined,
+            bloodGroup: fd.get('bloodGroup') || undefined,
+            phone: fd.get('phone') || undefined,
+            govid: fd.get('govid') || undefined,
+            insurance: fd.get('insurance') || undefined,
+            allergy: fd.get('allergy') || undefined,
+            medications: fd.get('medications') || undefined,
+            history: fd.get('history') || undefined,
+            emergencyName: fd.get('emergencyName') || undefined,
+            emergencyPhone: fd.get('emergencyPhone') || undefined,
+            city: fd.get('city') || undefined,
+            state: fd.get('state') || undefined,
+            pincode: fd.get('pincode') || undefined,
+            address: fd.get('address') || undefined
+          };
+        } else if (currentRole === 'doctor') {
+          updatePayload = {
+            name: fd.get('docFullName') || undefined,
+            phone: fd.get('docPhone') || undefined,
+            degree: fd.get('degree') || undefined,
+            specialization: fd.get('specialization') || undefined,
+            experience: fd.get('experience') ? Number(fd.get('experience')) : undefined,
+            clinicName: fd.get('clinicName') || undefined,
+            clinicAddress: fd.get('clinicAddress') || undefined,
+            city: fd.get('docCity') || undefined,
+            state: fd.get('docState') || undefined
+          };
+        } else if (currentRole === 'hospital') {
+          const schemesRaw = fd.get('govtSchemesList');
+          const schemesArr = schemesRaw ? String(schemesRaw).split(',').map(item => item.trim()).filter(Boolean) : [];
+          updatePayload = {
+            name: fd.get('hospName') || undefined,
+            hospitalName: fd.get('hospName') || undefined,
+            phone: fd.get('hospPhone') || undefined,
+            hospitalOwnership: fd.get('hospitalOwnership') || undefined,
+            hospitalType: fd.get('hospitalType') || undefined,
+            bedCapacity: fd.get('bedCapacity') ? Number(fd.get('bedCapacity')) : undefined,
+            managingDirectorName: fd.get('managingDirectorName') || undefined,
+            managingDirectorContact: fd.get('managingDirectorContact') || undefined,
+            authorizedRepresentative: fd.get('authorizedRepresentative') || undefined,
+            govtSchemesAvailable: fd.get('govtSchemesAvailable') === 'true',
+            govtSchemesList: schemesArr,
+            city: fd.get('hospCity') || undefined,
+            state: fd.get('hospState') || undefined,
+            address: fd.get('hospAddress') || undefined
+          };
+        }
+
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving changes to database…';
+        }
+
+        try {
+          const res = await fetch(apiUrl('/api/v1/auth/me'), {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(updatePayload)
+          });
+          const resData = await res.json();
+          if (!res.ok || !resData.data) {
+            alert(resData.error || resData.message || 'Failed to update profile.');
+            return;
+          }
+
+          const updatedUser = resData.data;
+          setCachedProfile(updatedUser);
+          window.currentUserProfile = updatedUser;
+          render(updatedUser);
+          setEditMode(false);
+          alert('Profile successfully updated and saved to database!');
+        } catch (err) {
+          alert('Network or server error updating profile: ' + err.message);
+        } finally {
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Profile Changes ↗';
+          }
+        }
+      });
     }
 
     // 2. SWR Background Revalidation
@@ -398,8 +756,53 @@
           const doctorStr=r.doctorName?`${r.doctorName} · `:'';
           const hospitalStr=r.clinicName||'Verified in Vault';
           const medsCount=r.prescribedMedications?.length?` · ${r.prescribedMedications.length} Medicines Prescribed`:'';
-          return `<div class="record-card" data-type="${isLab?'report':'prescription'}"><div class="record-icon ${isLab?'report-icon':'prescription-icon'}">${isLab?'⚗':'℞'}</div><div class="record-main"><div><span class="record-type">${esc(docTypeStr)} · ${esc(docDate)}</span><h3>${esc(titleStr)}</h3><p>${esc(doctorStr)}${esc(hospitalStr)}${esc(medsCount)}</p></div><button class="view-btn" onclick="alert('Viewing AES-256 encrypted document: ${esc(titleStr)}')">View Document ↗</button></div></div>`;
+          const fileLink=r.fileUrl||apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
+          return `
+            <div class="record-card" data-type="${isLab?'report':'prescription'}">
+              <div class="record-icon ${isLab?'report-icon':'prescription-icon'}">${isLab?'⚗':'℞'}</div>
+              <div class="record-main" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;width:100%;">
+                <div style="flex:1;min-width:220px;">
+                  <span class="record-type">${esc(docTypeStr)} · ${esc(docDate)}</span>
+                  <h3>${esc(titleStr)}</h3>
+                  <p>${esc(doctorStr)}${esc(hospitalStr)}${esc(medsCount)}</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <a href="${fileLink}" target="_blank" class="view-btn" style="text-decoration:none;display:inline-flex;align-items:center;">View Document ↗</a>
+                  <button type="button" class="delete-record-btn" data-id="${r.id}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:7px 12px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">🗑 Delete</button>
+                </div>
+              </div>
+            </div>
+          `;
         }).join('');
+
+        container.querySelectorAll('.delete-record-btn').forEach(btn=>{
+          btn.addEventListener('click',async(e)=>{
+            e.stopPropagation();
+            const id=btn.dataset.id;
+            if(!confirm('Are you sure you want to permanently delete this medical record? This will remove the document, its timeline consultation, and any active daily medication tasks associated with it.'))return;
+            btn.disabled=true;
+            btn.textContent='Deleting…';
+            try{
+              const dRes=await fetch(apiUrl(`/api/v1/records/${id}`),{
+                method:'DELETE',
+                headers:{Authorization:`Bearer ${token}`}
+              });
+              const dJson=await dRes.json();
+              if(!dRes.ok||!dJson.success){
+                alert(dJson.error||dJson.message||'Failed to delete record.');
+                btn.disabled=false;
+                btn.textContent='🗑 Delete';
+                return;
+              }
+              alert('Medical record permanently deleted.');
+              bindPatientRecords();
+            }catch(err){
+              alert('Network error deleting record: '+err.message);
+              btn.disabled=false;
+              btn.textContent='🗑 Delete';
+            }
+          });
+        });
       }else{
         container.innerHTML=`<div class="empty-state" id="recordsEmptyState" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:48px 24px;text-align:center;width:100%;"><div class="empty-icon" style="font-size:40px;margin-bottom:12px;">▤</div><h3 style="font:800 20px 'Manrope';margin:0 0 8px;">No medical records yet</h3><p style="color:var(--muted);max-width:460px;margin:0 auto 20px;font-size:14px;">Upload your prescriptions, lab reports, or discharge summaries to securely store and index them in your sovereign vault.</p><a class="primary-btn" href="upload.html" style="display:inline-block;">Upload Your First Record ↗</a></div>`;
       }
@@ -448,8 +851,11 @@
     saveBtn?.addEventListener('click',async()=>{
       const file=i?.files?.[0];
       const docType=docTypeSelect?.value||'prescription';
-      const docDate=docDateInput?.value.trim()||new Date().toLocaleDateString('en-GB').replace(/\//g,'');
+      const docDate=docDateInput?.value.trim()||new Date().toISOString().split('T')[0];
       const docNote=docNoteInput?.value.trim()||'';
+      const doctorUnitId=document.getElementById('doctorUnitId')?.value.trim()||'';
+      const medNeededEl=document.getElementById('medicineStillNeeded');
+      const isMedicineStillNeeded=medNeededEl ? medNeededEl.checked : true;
       const token=getToken();
 
       if(!token){
@@ -467,6 +873,10 @@
           fd.append('file',file);
           fd.append('documentType',docType.toUpperCase());
           fd.append('note',docNote);
+          fd.append('eventDate',docDate);
+          if(doctorUnitId) fd.append('doctorUnitId',doctorUnitId);
+          fd.append('isMedicineStillNeeded',String(isMedicineStillNeeded));
+
           const res=await fetch(apiUrl('/api/v1/records/upload'),{
             method:'POST',
             headers:{Authorization:`Bearer ${token}`},
@@ -492,6 +902,8 @@
               title:docNote,
               recordType:docType.toUpperCase(),
               eventDateDdmmyyyy:docDate,
+              doctorUnitId:doctorUnitId||undefined,
+              isMedicineStillNeeded,
               diagnosis:docNote,
               clinicalSummary:docNote
             })
@@ -754,8 +1166,54 @@
       if(events.length>0){
         timelineList.innerHTML=events.map(ev=>{
           const dateStr=ev.eventDateDdmmyyyy||'Recent';
-          return `<div class="timeline-card" data-event-type="rx"><div class="timeline-date"><span>${esc(dateStr)}</span></div><div class="timeline-content"><div class="card-topline"><span>CLINICAL EVENT</span><span class="status-pill" style="background:#e8f4e9;color:#35673a;">Verified Vault</span></div><h3 style="font:800 20px 'Manrope';margin:4px 0 6px;">${esc(ev.clinicalSummary||ev.diagnoses?.[0]||'Clinical Visit')}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 10px;">${esc(ev.doctorName?ev.doctorName+' · ':'' )}${esc(ev.clinicName||'MediLocker Vault')}</p>${ev.diagnoses?.length?`<div style="font-size:13px;color:var(--text);margin-bottom:8px;"><b>Diagnoses:</b> ${esc(ev.diagnoses.join(', '))}</div>`:''}${ev.prescribedMedications?.length?`<div style="font-size:13px;color:var(--plum);margin-bottom:8px;"><b>Prescribed (${ev.prescribedMedications.length}):</b> ${esc(ev.prescribedMedications.map(m=>m.medicineName).join(', '))}</div>`:''}</div></div>`;
+          return `
+            <div class="timeline-card" data-event-type="rx">
+              <div class="timeline-date"><span>${esc(dateStr)}</span></div>
+              <div class="timeline-content">
+                <div class="card-topline" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <span>CLINICAL EVENT</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-pill" style="background:#e8f4e9;color:#35673a;">Verified Vault</span>
+                    <button type="button" class="delete-timeline-btn" data-id="${ev.id}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">🗑 Delete</button>
+                  </div>
+                </div>
+                <h3 style="font:800 20px 'Manrope';margin:4px 0 6px;">${esc(ev.clinicalSummary||ev.diagnoses?.[0]||'Clinical Visit')}</h3>
+                <p style="color:var(--muted);font-size:14px;margin:0 0 10px;">${esc(ev.doctorName?ev.doctorName+' · ':'' )}${esc(ev.clinicName||'MediLocker Vault')}</p>
+                ${ev.diagnoses?.length?`<div style="font-size:13px;color:var(--text);margin-bottom:8px;"><b>Diagnoses:</b> ${esc(ev.diagnoses.join(', '))}</div>`:''}
+                ${ev.prescribedMedications?.length?`<div style="font-size:13px;color:var(--plum);margin-bottom:8px;"><b>Prescribed (${ev.prescribedMedications.length}):</b> ${esc(ev.prescribedMedications.map(m=>m.medicineName).join(', '))}</div>`:''}
+              </div>
+            </div>
+          `;
         }).join('');
+
+        timelineList.querySelectorAll('.delete-timeline-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            if (!confirm('Are you sure you want to permanently delete this clinical timeline event? This will remove the record, prescriptions, and any ongoing medication routines from your locker.')) return;
+            btn.disabled = true;
+            btn.textContent = 'Deleting…';
+            try {
+              const res = await fetch(apiUrl(`/api/v1/timeline/${id}`), {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              const json = await res.json();
+              if (!res.ok || !json.success) {
+                alert(json.error || json.message || 'Failed to delete timeline event.');
+                btn.disabled = false;
+                btn.textContent = '🗑 Delete';
+                return;
+              }
+              alert('Timeline event permanently deleted.');
+              bindTimeline();
+            } catch (err) {
+              alert('Network error deleting timeline event: ' + err.message);
+              btn.disabled = false;
+              btn.textContent = '🗑 Delete';
+            }
+          });
+        });
       }else{
         timelineList.innerHTML=`<div class="empty-state"><div class="empty-icon">⏳</div><h3>Your health timeline is empty</h3><p>Upload your first prescription, lab report, or hospital discharge summary to generate your chronological health story with Medi-AI.</p><a href="upload.html" class="primary-btn" style="margin-top:14px;">Upload Record ↗</a></div>`;
       }
@@ -1456,6 +1914,7 @@
             const doctor=r.doctorName?`${r.doctorName} · `:'';
             const clinic=r.clinicName||'MediLocker Lab';
             const diagnoses=Array.isArray(r.diagnoses)?r.diagnoses.filter(d=>d!==title):[];
+            const fileLink=r.fileUrl||apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
             return `
               <article class="record-card report-card" style="margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px 24px;display:flex;flex-direction:column;gap:12px;text-align:left;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
@@ -1467,13 +1926,45 @@
                     <h3 style="font:800 20px 'Manrope';margin:4px 0 2px;">${esc(title)}</h3>
                     <p style="color:var(--muted);font-size:14px;margin:0;">${esc(doctor)}${esc(clinic)}</p>
                   </div>
-                  <button class="primary-btn" style="font-size:13px;padding:9px 18px;" onclick="alert('Viewing AES-256 encrypted report: ${esc(title)}')">View Full Report ↗</button>
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <a href="${fileLink}" target="_blank" class="primary-btn" style="font-size:13px;padding:9px 18px;text-decoration:none;display:inline-flex;align-items:center;">View Full Report ↗</a>
+                    <button type="button" class="delete-lab-btn" data-id="${r.id}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">🗑 Delete</button>
+                  </div>
                 </div>
                 ${diagnoses.length?`<div style="font-size:13px;color:var(--text);background:#f9f7fa;padding:10px 14px;border-radius:10px;margin-top:4px;"><b>Analyte / Findings:</b> ${esc(diagnoses.join(' · '))}</div>`:''}
                 ${r.clinicalSummary?`<p style="font-size:13px;color:var(--muted);margin:2px 0 0;">${esc(r.clinicalSummary)}</p>`:''}
               </article>
             `;
           }).join('');
+
+          labContainer.querySelectorAll('.delete-lab-btn').forEach(btn=>{
+            btn.addEventListener('click',async(e)=>{
+              e.stopPropagation();
+              const id=btn.dataset.id;
+              if(!confirm('Are you sure you want to permanently delete this lab report? This will remove the document and its laboratory findings from your locker.'))return;
+              btn.disabled=true;
+              btn.textContent='Deleting…';
+              try{
+                const dRes=await fetch(apiUrl(`/api/v1/records/${id}`),{
+                  method:'DELETE',
+                  headers:{Authorization:`Bearer ${token}`}
+                });
+                const dJson=await dRes.json();
+                if(!dRes.ok||!dJson.success){
+                  alert(dJson.error||dJson.message||'Failed to delete lab report.');
+                  btn.disabled=false;
+                  btn.textContent='🗑 Delete';
+                  return;
+                }
+                alert('Lab report permanently deleted.');
+                bindTests();
+              }catch(err){
+                alert('Network error deleting lab report: '+err.message);
+                btn.disabled=false;
+                btn.textContent='🗑 Delete';
+              }
+            });
+          });
         }else{
           labContainer.innerHTML=`
             <div class="empty-state" id="labEmptyState" style="padding:32px 16px;text-align:center;">
@@ -1711,6 +2202,85 @@
       closeRecordModal.addEventListener('click',()=>recordModal?.classList.add('hidden'));
     }
 
+    // Pending patient verifications awaiting 6-digit code
+    const pendingContainer = document.getElementById('pendingVerificationList');
+    async function loadPendingVerifications() {
+      if (!pendingContainer) return;
+      try {
+        const res = await fetch(apiUrl('/api/v1/delegation/provider/pending-requests'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const pending = json.data || [];
+
+        if (pending.length === 0) {
+          pendingContainer.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">No pending access requests awaiting verification.</p></div>`;
+          return;
+        }
+
+        pendingContainer.innerHTML = pending.map(item => {
+          const exp = new Date(item.codeExpiresAt);
+          const minsLeft = Math.max(0, Math.round((exp.getTime() - Date.now()) / 60000));
+          return `
+            <div class="record-card" style="margin-bottom:12px;background:#faf9fc;border:1px solid var(--line);">
+              <div class="record-icon" style="background:#eef2ff;color:#3b82f6;">⏳</div>
+              <div class="record-main" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;width:100%;">
+                <div style="flex:1;min-width:240px;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span class="status-pill" style="background:#fff7ed;color:#c2410c;font-size:11px;font-weight:700;">PENDING VERIFICATION</span>
+                    <small style="color:var(--muted);font-weight:700;">Code valid for next ${minsLeft}m</small>
+                  </div>
+                  <h4 style="font:800 18px 'Manrope';margin:4px 0;">${esc(item.patientName)}</h4>
+                  <p style="margin:0;font-size:13px;color:var(--muted);">
+                    <b>Unit ID:</b> <code style="font-weight:700;color:var(--plum);">${esc(item.patientMedilockerId)}</code> · 
+                    Requested: ${new Date(item.requestedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                  </p>
+                </div>
+                <form class="inline-verify-form" data-unit="${esc(item.patientMedilockerId)}" style="display:flex;gap:8px;align-items:center;">
+                  <input type="text" class="pending-code-input" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required style="width:130px;font:700 18px monospace;letter-spacing:4px;text-align:center;padding:8px;border:1.5px solid var(--plum);border-radius:10px;background:#fff;">
+                  <button type="submit" class="primary-btn" style="padding:9px 16px;font-size:13px;white-space:nowrap;">Verify & Unlock ↗</button>
+                </form>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        pendingContainer.querySelectorAll('.inline-verify-form').forEach(form => {
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const patientMedilockerId = form.dataset.unit;
+            const code = form.querySelector('.pending-code-input')?.value.trim();
+            if (!code) return;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+              const vRes = await fetch(apiUrl('/api/v1/delegation/verify-code'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ patientMedilockerId, authCode: code })
+              });
+              const vJson = await vRes.json();
+              if (!vRes.ok || !vJson.success) {
+                alert(vJson.error || 'Verification failed: Invalid or expired authorization code.');
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+              }
+
+              alert('Access successfully verified! Unlocking patient records.');
+              loadPendingVerifications();
+              loadActivePatients();
+              openPatientRecords(patientMedilockerId);
+            } catch (err) {
+              alert('Verification request failed: ' + err.message);
+              if (submitBtn) submitBtn.disabled = false;
+            }
+          });
+        });
+      } catch (e) {}
+    }
+
     // Load currently active patients
     async function loadActivePatients(){
       if(!activeList)return;
@@ -1753,7 +2323,279 @@
       }catch(e){}
     }
 
+    // Doctor Appointments & Pre-Consultation Checklist
+    const todayList = document.getElementById('todayApptsList');
+    const upcomingList = document.getElementById('upcomingApptsList');
+    const upcomingTodoList = document.getElementById('upcomingTodoList');
+    const allList = document.getElementById('allApptsList');
+    const todayCountEl = document.getElementById('todayApptsCount');
+    const pendingCountEl = document.getElementById('pendingApptsCount');
+    const todoCountEl = document.getElementById('todoApptsCount');
+    const todoBadgeEl = document.getElementById('todoProgressBadge');
+    const refreshApptsBtn = document.getElementById('refreshDoctorApptsBtn');
+
+    const apptTabs = document.querySelectorAll('[data-appttab]');
+    const tabContents = {
+      today: document.getElementById('todayApptsTabContent'),
+      upcoming: document.getElementById('upcomingApptsTabContent'),
+      all: document.getElementById('allApptsTabContent')
+    };
+
+    apptTabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        apptTabs.forEach(b => {
+          b.classList.remove('active');
+          b.style.background = '#fff';
+          b.style.color = 'var(--ink)';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--plum)';
+        btn.style.color = '#fff';
+
+        const tab = btn.dataset.appttab;
+        Object.keys(tabContents).forEach(k => {
+          if (tabContents[k]) {
+            if (k === tab) tabContents[k].classList.remove('hidden');
+            else tabContents[k].classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    refreshApptsBtn?.addEventListener('click', () => loadDoctorAppointments());
+
+    async function loadDoctorAppointments() {
+      if (!todayList) return;
+      try {
+        const res = await fetch(apiUrl('/api/v1/appointments/my'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const appointments = json.data || [];
+
+        const now = new Date();
+        const todayDateStr = now.toISOString().slice(0, 10);
+
+        let todayAppts = [];
+        let upcomingAppts = [];
+        let pendingCount = 0;
+
+        appointments.forEach(a => {
+          if (a.status === 'PENDING') pendingCount++;
+          const aDateStr = new Date(a.appointmentDate).toISOString().slice(0, 10);
+          if (aDateStr === todayDateStr) {
+            todayAppts.push(a);
+          } else if (new Date(a.appointmentDate) > now) {
+            upcomingAppts.push(a);
+          }
+        });
+
+        if (todayCountEl) todayCountEl.textContent = todayAppts.length;
+        if (pendingCountEl) pendingCountEl.textContent = pendingCount;
+
+        // Render Today's List
+        renderAppointmentCards(todayList, todayAppts, 'No patient visits scheduled for today.');
+
+        // Render Upcoming List
+        renderAppointmentCards(upcomingList, upcomingAppts, 'No upcoming appointments scheduled.');
+
+        // Render All List
+        renderAppointmentCards(allList, appointments, 'No appointments history found.');
+
+        // Render Upcoming To-Do Checklist
+        renderUpcomingTodoChecklist(upcomingAppts.concat(todayAppts.filter(a => a.status !== 'CANCELLED')));
+      } catch (err) {
+        console.warn('Failed to load doctor appointments:', err);
+      }
+    }
+
+    function renderAppointmentCards(container, list, emptyMsg) {
+      if (!container) return;
+      if (list.length === 0) {
+        container.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">${emptyMsg}</p></div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(a => {
+        const d = new Date(a.appointmentDate);
+        const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        let statusStyle = 'background:#fef3c7;color:#92400e;'; // PENDING
+        if (a.status === 'CONFIRMED') statusStyle = 'background:#dcfce7;color:#15803d;';
+        else if (a.status === 'COMPLETED') statusStyle = 'background:#e0e7ff;color:#4338ca;';
+        else if (a.status === 'CANCELLED') statusStyle = 'background:#fee2e2;color:#b91c1c;';
+
+        return `
+          <div class="record-card" style="margin-bottom:12px;border:1px solid var(--line);background:#fff;padding:16px;">
+            <div class="record-icon" style="background:#f3e8ff;color:#6b21a8;font-size:20px;">🩺</div>
+            <div class="record-main" style="width:100%;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+                <div>
+                  <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;flex-wrap:wrap;">
+                    <span class="status-pill" style="${statusStyle}font-size:11px;font-weight:700;">${a.status}</span>
+                    <span style="font-weight:700;font-size:13px;color:var(--plum);">📅 ${dateStr} · ⏱ ${esc(a.timeSlot)}</span>
+                  </div>
+                  <h4 style="font:800 18px 'Manrope';margin:4px 0;">${esc(a.patientName)}</h4>
+                  <p style="margin:0;font-size:13px;color:var(--muted);">
+                    <b>Unit ID:</b> <code style="color:var(--plum);font-weight:700;">${esc(a.patientMedilockerId)}</code>
+                    ${a.patientPhone ? ` · 📞 ${esc(a.patientPhone)}` : ''}
+                    ${a.bloodGroup ? ` · 🩸 ${esc(a.bloodGroup)}` : ''}
+                  </p>
+                  <p style="margin:6px 0 0;font-size:14px;color:var(--ink);">
+                    <b>Reason:</b> ${esc(a.reason || 'General Consultation')}
+                  </p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <button type="button" class="secondary-btn unlock-patient-btn" data-unit="${esc(a.patientMedilockerId)}" style="padding:7px 13px;font-size:12px;">🔓 Unlock Records</button>
+                  ${a.status === 'PENDING' ? `
+                    <button type="button" class="primary-btn appt-status-btn" data-id="${a.id}" data-action="CONFIRMED" style="padding:7px 13px;font-size:12px;background:#16a34a;">✓ Confirm</button>
+                    <button type="button" class="secondary-btn appt-status-btn" data-id="${a.id}" data-action="CANCELLED" style="padding:7px 13px;font-size:12px;color:#dc2626;border-color:#fca5a5;">✕ Cancel</button>
+                  ` : ''}
+                  ${a.status === 'CONFIRMED' ? `
+                    <button type="button" class="primary-btn appt-status-btn" data-id="${a.id}" data-action="COMPLETED" style="padding:7px 13px;font-size:12px;background:#2563eb;">✔ Mark Completed</button>
+                    <button type="button" class="secondary-btn appt-status-btn" data-id="${a.id}" data-action="CANCELLED" style="padding:7px 13px;font-size:12px;color:#dc2626;border-color:#fca5a5;">✕ Cancel</button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.unlock-patient-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const unit = btn.dataset.unit;
+          if (searchInput) {
+            searchInput.value = unit;
+            searchForm?.scrollIntoView({ behavior: 'smooth' });
+            searchForm?.requestSubmit();
+          }
+        });
+      });
+
+      container.querySelectorAll('.appt-status-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const apptId = btn.dataset.id;
+          const newStatus = btn.dataset.action;
+          if (!confirm(`Are you sure you want to mark this appointment as ${newStatus}?`)) return;
+
+          try {
+            btn.disabled = true;
+            const uRes = await fetch(apiUrl(`/api/v1/appointments/${apptId}/status`), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ status: newStatus })
+            });
+            const uJson = await uRes.json();
+            if (!uRes.ok || !uJson.success) {
+              alert(uJson.error || 'Failed to update status.');
+              btn.disabled = false;
+              return;
+            }
+            loadDoctorAppointments();
+          } catch (e) {
+            alert('Status update failed: ' + e.message);
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    function renderUpcomingTodoChecklist(appts) {
+      if (!upcomingTodoList) return;
+      if (appts.length === 0) {
+        upcomingTodoList.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">No scheduled consultations requiring preparation.</p></div>`;
+        if (todoCountEl) todoCountEl.textContent = '0 Tasks';
+        if (todoBadgeEl) todoBadgeEl.textContent = '100% Ready';
+        return;
+      }
+
+      // Generate structured clinical pre-consultation tasks per appointment
+      let allTasks = [];
+      appts.forEach(a => {
+        const d = new Date(a.appointmentDate);
+        const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        allTasks.push({
+          id: `review_history_${a.id}`,
+          apptId: a.id,
+          unitId: a.patientMedilockerId,
+          text: `Review past medical records & allergy profiles for ${a.patientName}`,
+          badge: `${dateStr} · ${a.timeSlot}`,
+          category: 'History Check'
+        });
+        allTasks.push({
+          id: `prepare_notes_${a.id}`,
+          apptId: a.id,
+          unitId: a.patientMedilockerId,
+          text: `Prepare diagnostic clinical notes & tentative treatment plan for "${a.reason || 'General Consultation'}"`,
+          badge: `${dateStr} · ${a.timeSlot}`,
+          category: 'Clinical Plan'
+        });
+        allTasks.push({
+          id: `verify_status_${a.id}`,
+          apptId: a.id,
+          unitId: a.patientMedilockerId,
+          text: `Confirm consultation attendance & check 6-digit access code with ${a.patientName}`,
+          badge: `${dateStr} · ${a.timeSlot}`,
+          category: 'Patient Check-in'
+        });
+      });
+
+      let completedCount = 0;
+      allTasks.forEach(t => {
+        if (localStorage.getItem(`doctor_appt_task_${t.id}`) === 'true') {
+          completedCount++;
+        }
+      });
+
+      const totalTasks = allTasks.length;
+      const pct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 100;
+
+      if (todoCountEl) todoCountEl.textContent = `${totalTasks - completedCount} Tasks`;
+      if (todoBadgeEl) todoBadgeEl.textContent = `${pct}% Ready (${completedCount}/${totalTasks})`;
+
+      upcomingTodoList.innerHTML = allTasks.map(t => {
+        const isDone = localStorage.getItem(`doctor_appt_task_${t.id}`) === 'true';
+        return `
+          <div class="todo-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:${isDone ? '#f0fdf4' : '#fff'};border:1px solid ${isDone ? '#bbf7d0' : 'var(--line)'};border-radius:12px;margin-bottom:8px;transition:all 0.2s;">
+            <label style="display:flex;align-items:center;gap:12px;cursor:pointer;flex:1;margin:0;">
+              <input type="checkbox" class="doctor-todo-checkbox" data-taskid="${t.id}" ${isDone ? 'checked' : ''} style="width:18px;height:18px;accent-color:#16a34a;cursor:pointer;">
+              <span style="${isDone ? 'text-decoration:line-through;color:var(--muted);' : 'font-weight:600;color:var(--ink);'}font-size:14px;">
+                ${esc(t.text)}
+              </span>
+            </label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-size:11px;font-weight:700;background:#f3e8ff;color:#6b21a8;padding:3px 8px;border-radius:8px;">${esc(t.badge)}</span>
+              <button type="button" class="secondary-btn unlock-patient-btn" data-unit="${esc(t.unitId)}" style="padding:4px 10px;font-size:11px;">Unlock</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      upcomingTodoList.querySelectorAll('.doctor-todo-checkbox').forEach(chk => {
+        chk.addEventListener('change', () => {
+          const taskId = chk.dataset.taskid;
+          localStorage.setItem(`doctor_appt_task_${taskId}`, chk.checked ? 'true' : 'false');
+          renderUpcomingTodoChecklist(appts);
+        });
+      });
+
+      upcomingTodoList.querySelectorAll('.unlock-patient-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const unit = btn.dataset.unit;
+          if (searchInput) {
+            searchInput.value = unit;
+            searchForm?.scrollIntoView({ behavior: 'smooth' });
+            searchForm?.requestSubmit();
+          }
+        });
+      });
+    }
+
     loadActivePatients();
+    loadPendingVerifications();
+    loadDoctorAppointments();
 
     // Search patient by Unit ID (Only Name & DOB)
     searchForm?.addEventListener('submit',async(e)=>{
@@ -1845,6 +2687,19 @@
               return;
             }
 
+            if (reqJson.data?.alreadyActive) {
+              alert('You already have active authorized access to this patient! Unlocking health vault now.');
+              loadActivePatients();
+              openPatientRecords(patient.medilockerId);
+              return;
+            }
+
+            if (reqJson.data?.isExisting) {
+              alert('An access request code is already active for this patient within the 15-minute window. Enter the dynamic passcode below.');
+            }
+
+            loadPendingVerifications();
+
             // Show 6-digit Code Entry Screen
             resultBox.innerHTML=`
               <div class="profile-card" style="border:2px solid var(--plum);background:#faf8fd;margin-top:10px;">
@@ -1897,6 +2752,7 @@
                 `;
 
                 loadActivePatients();
+                loadPendingVerifications();
                 openPatientRecords(patient.medilockerId);
 
               }catch(vErr){
@@ -1985,7 +2841,9 @@
           <div style="margin-top:24px;">
             <h3 style="font:800 20px 'Manrope';margin:0 0 12px;">1. Medical Documents & Prescriptions (${records.length})</h3>
             <div class="records-list">
-              ${records.length===0?'<p style="color:var(--muted);font-size:14px;">No documents in patient vault.</p>':records.map(r=>`
+              ${records.length===0?'<p style="color:var(--muted);font-size:14px;">No documents in patient vault.</p>':records.map(r=>{
+                const fileLink = r.fileUrl || apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
+                return `
                 <div class="record-card" style="padding:14px 18px;">
                   <div class="record-icon ${r.documentType==='PRESCRIPTION'?'prescription-icon':'report-icon'}" style="width:42px;height:42px;font-size:16px;">
                     ${r.documentType==='PRESCRIPTION'?'Rx':'Lab'}
@@ -1996,10 +2854,10 @@
                       <h4 style="font:700 16px 'Manrope';margin:2px 0;">${esc(r.originalFilename)}</h4>
                       <small style="color:var(--muted);">${new Date(r.uploadedAt).toLocaleDateString()} ${r.userNote?`· "${esc(r.userNote)}"`:''}</small>
                     </div>
-                    <a href="/uploads/${esc(r.storageKey)}" target="_blank" class="view-btn" style="font-size:13px;padding:6px 12px;">View File ↗</a>
+                    <a href="${fileLink}" target="_blank" class="view-btn" style="font-size:13px;padding:6px 12px;">View File ↗</a>
                   </div>
                 </div>
-              `).join('')}
+              `;}).join('')}
             </div>
           </div>
 
@@ -2053,6 +2911,253 @@
     }
   }
 
+  // Bind Doctors Directory & Appointment Booking
+  async function bindDoctorsPage() {
+    const s = requireSession('patient');
+    if (!s) return;
+    const token = getToken();
+
+    const listContainer = document.getElementById('doctorsListContainer');
+    if (!listContainer) return;
+
+    let activeFilter = 'all'; // 'all' | 'visited' | 'nearby'
+    const specialtyFilter = document.getElementById('doctorSpecialtyFilter');
+    const searchInput = document.getElementById('doctorSearchInput');
+
+    const filterAllBtn = document.getElementById('filterAllDoctorsBtn');
+    const filterVisitedBtn = document.getElementById('filterVisitedDoctorsBtn');
+    const filterNearbyBtn = document.getElementById('filterNearbyDoctorsBtn');
+
+    function updateFilterButtons() {
+      [filterAllBtn, filterVisitedBtn, filterNearbyBtn].forEach(b => {
+        if (!b) return;
+        b.style.background = '#f3f0f5';
+        b.style.color = 'var(--plum)';
+        b.style.borderColor = 'var(--line)';
+      });
+      const activeBtn = activeFilter === 'visited' ? filterVisitedBtn : (activeFilter === 'nearby' ? filterNearbyBtn : filterAllBtn);
+      if (activeBtn) {
+        activeBtn.style.background = 'var(--plum)';
+        activeBtn.style.color = '#fff';
+        activeBtn.style.borderColor = 'var(--plum)';
+      }
+    }
+
+    filterAllBtn?.addEventListener('click', () => { activeFilter = 'all'; updateFilterButtons(); loadDoctors(); });
+    filterVisitedBtn?.addEventListener('click', () => { activeFilter = 'visited'; updateFilterButtons(); loadDoctors(); });
+    filterNearbyBtn?.addEventListener('click', () => { activeFilter = 'nearby'; updateFilterButtons(); loadDoctors(); });
+    specialtyFilter?.addEventListener('change', () => loadDoctors());
+
+    let searchTimer = null;
+    searchInput?.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadDoctors, 300);
+    });
+
+    async function loadDoctors() {
+      listContainer.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1;">Finding verified doctors…</div>`;
+      const params = new URLSearchParams();
+      if (activeFilter === 'visited') params.set('previouslyVisited', 'true');
+      if (activeFilter === 'nearby') params.set('nearby', 'true');
+      const spec = specialtyFilter?.value;
+      if (spec) params.set('specialty', spec);
+      const query = searchInput?.value.trim();
+      if (query) params.set('search', query);
+
+      try {
+        const res = await fetch(apiUrl(`/api/v1/appointments/doctors?${params.toString()}`), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        const doctors = json.data || [];
+
+        if (doctors.length === 0) {
+          listContainer.innerHTML = `
+            <div class="empty-state compact" style="grid-column:1/-1;padding:40px;text-align:center;">
+              <div class="empty-icon" style="font-size:36px;margin-bottom:8px;">👨‍⚕️</div>
+              <h4 style="margin:4px 0;">No Doctors Found</h4>
+              <p style="color:var(--muted);margin:0;">No registered doctors match your current filter criteria.</p>
+            </div>
+          `;
+          return;
+        }
+
+        listContainer.innerHTML = doctors.map(doc => {
+          const initialsStr = initials(doc.fullName);
+          const expText = doc.experienceYears ? `${doc.experienceYears}+ years exp` : '';
+          const locationText = [doc.city, doc.state].filter(Boolean).join(', ');
+
+          return `
+            <div class="doctor-card" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between;gap:16px;">
+              <div>
+                <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;">
+                  <div class="avatar" style="width:52px;height:52px;font-size:18px;flex-shrink:0;">${initialsStr}</div>
+                  <div style="flex:1;">
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
+                      ${doc.isPreviouslyVisited ? `<span class="status-pill" style="background:#f0fdf4;color:#15803d;font-size:11px;font-weight:700;">✓ Previously Consulted</span>` : ''}
+                      ${doc.isNearby ? `<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;">📍 In Your Area</span>` : ''}
+                    </div>
+                    <h3 style="font:800 18px 'Manrope';margin:0;color:var(--plum);">${esc(doc.fullName)}</h3>
+                    <p style="margin:2px 0 0;font:600 13px 'DM Sans';color:#0d9488;">
+                      ${esc(doc.specialization)} ${doc.degree ? `· <span style="color:var(--muted);font-weight:500;">${esc(doc.degree)}</span>` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px;">
+                  <div>🏥 <b>${esc(doc.clinicName || 'Medical Clinic')}</b></div>
+                  ${locationText ? `<div>📍 ${esc(locationText)}</div>` : ''}
+                  ${expText ? `<div>⏱ ${esc(expText)}</div>` : ''}
+                  <div>🆔 <code style="color:var(--plum);font-weight:700;">${esc(doc.medilockerId)}</code></div>
+                </div>
+              </div>
+
+              <button class="primary-btn book-doc-btn" 
+                data-unit="${esc(doc.medilockerId)}" 
+                data-name="${esc(doc.fullName)}" 
+                data-spec="${esc(doc.specialization)}"
+                data-clinic="${esc(doc.clinicName || '')}"
+                style="width:100%;padding:11px 16px;font-size:14px;">
+                Book Appointment ↗
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        listContainer.querySelectorAll('.book-doc-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openBookingModal(btn.dataset.unit, btn.dataset.name, btn.dataset.spec, btn.dataset.clinic);
+          });
+        });
+
+      } catch (err) {
+        listContainer.innerHTML = `<div class="empty-state compact" style="grid-column:1/-1;"><p style="color:#cf4e4e;">Failed to load doctors: ${esc(err.message)}</p></div>`;
+      }
+    }
+
+    // Modal logic
+    const modal = document.getElementById('appointmentModal');
+    const closeModal = document.getElementById('closeAppointmentModal');
+    const cancelModal = document.getElementById('cancelAppointmentBtn');
+    const bookingForm = document.getElementById('bookAppointmentForm');
+    const docNameSpan = document.getElementById('appointmentDoctorName');
+    const docDetailsSpan = document.getElementById('appointmentDoctorDetails');
+    const docUnitInput = document.getElementById('appointmentDoctorUnitId');
+
+    function openBookingModal(unit, name, spec, clinic) {
+      if (!modal) return;
+      if (docNameSpan) docNameSpan.textContent = name;
+      if (docDetailsSpan) docDetailsSpan.textContent = `${spec} · ${clinic} (${unit})`;
+      if (docUnitInput) docUnitInput.value = unit;
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateInput = document.getElementById('appointmentDate');
+      if (dateInput) {
+        dateInput.min = tomorrow.toISOString().split('T')[0];
+        dateInput.value = tomorrow.toISOString().split('T')[0];
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    closeModal?.addEventListener('click', () => modal?.classList.add('hidden'));
+    cancelModal?.addEventListener('click', () => modal?.classList.add('hidden'));
+
+    bookingForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const doctorUnitId = docUnitInput?.value.trim();
+      const dateVal = document.getElementById('appointmentDate')?.value;
+      const timeVal = document.getElementById('appointmentTime')?.value || '10:00 AM';
+      const reasonVal = document.getElementById('appointmentReason')?.value.trim();
+      const submitBtn = document.getElementById('submitAppointmentBtn');
+
+      if (!doctorUnitId || !dateVal) return;
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Securing booking…';
+      }
+
+      try {
+        const res = await fetch(apiUrl('/api/v1/appointments'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            doctorMedilockerId: doctorUnitId,
+            appointmentDate: dateVal,
+            timeSlot: timeVal,
+            reason: reasonVal || undefined
+          })
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          alert(json.error || 'Failed to book appointment.');
+          return;
+        }
+
+        alert('Appointment successfully booked with Dr. ' + (docNameSpan?.textContent || '') + '! Confirmation has been saved to your health portal.');
+        modal?.classList.add('hidden');
+        bookingForm.reset();
+        loadMyAppointments();
+      } catch (err) {
+        alert('Booking failed: ' + err.message);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Confirm Appointment ↗';
+        }
+      }
+    });
+
+    // Load patient appointments
+    const myApptsList = document.getElementById('myAppointmentsList');
+    async function loadMyAppointments() {
+      if (!myApptsList) return;
+      try {
+        const res = await fetch(apiUrl('/api/v1/appointments/my-appointments'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        const appts = json.data || [];
+
+        if (appts.length === 0) {
+          myApptsList.innerHTML = `<div class="empty-state compact"><p style="margin:0;color:var(--muted);">No upcoming appointments scheduled.</p></div>`;
+          return;
+        }
+
+        myApptsList.innerHTML = appts.map(a => {
+          const apptDateStr = new Date(a.appointmentDate).toLocaleDateString('en-GB', {
+            weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+          });
+          return `
+            <div class="record-card" style="margin-bottom:10px;background:#faf8fd;border:1px solid var(--line);">
+              <div class="record-icon" style="background:#e0f2fe;color:#0369a1;">📅</div>
+              <div class="record-main">
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-pill" style="background:#f0fdf4;color:#166534;font-size:11px;">${esc(a.status)}</span>
+                    <span style="font-weight:700;font-size:14px;color:var(--plum);">${apptDateStr} at ${esc(a.timeSlot)}</span>
+                  </div>
+                  <h4 style="font:800 18px 'Manrope';margin:4px 0;">${esc(a.doctorName)} (${esc(a.specialization)})</h4>
+                  <p style="margin:0;font-size:13px;color:var(--muted);">
+                    🏥 ${esc(a.clinicName || 'Clinic')} · 🆔 ${esc(a.doctorMedilockerId)}
+                    ${a.reason ? `· <i>"${esc(a.reason)}"</i>` : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    updateFilterButtons();
+    loadDoctors();
+    loadMyAppointments();
+  }
+
   // DOM ready dispatcher
   document.addEventListener('DOMContentLoaded',()=>{
     bindLanguage();
@@ -2065,6 +3170,7 @@
     if(document.querySelector('[data-user-name]')||document.querySelector('.patient-dashboard'))bindPatientUI();
     if(document.getElementById('recordsListContainer'))bindPatientRecords();
     if(document.querySelector('.provider-portal'))bindProviderPortal(document.body.dataset.providerRole);
+    if(document.getElementById('doctorsListContainer'))bindDoctorsPage();
     if(document.getElementById('fileInput'))bindUpload();
     if(document.getElementById('doneCount'))bindTodo();
 

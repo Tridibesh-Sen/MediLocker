@@ -6,6 +6,9 @@ import { AIService } from '../ai/ai.service';
 import { logger } from '../../utils/logger';
 import { AppError } from '../../middlewares/errorHandler';
 import { cacheService } from '../../utils/cache';
+import { mailerService } from '../../utils/mailer';
+import path from 'path';
+import fs from 'fs';
 
 export class RecordsService {
   /**
@@ -15,20 +18,22 @@ export class RecordsService {
     userId: string,
     file: Express.Multer.File,
     documentType: DocumentType,
-    note?: string
+    note?: string,
+    eventDate?: string,
+    isMedicineStillNeeded?: boolean,
+    doctorUnitId?: string
   ) {
-    // 1. Calculate SHA-256 Checksum for tamper-evidence
     const sha256Checksum = crypto.createHash('sha256').update(file.buffer).digest('hex');
-
-    // 2. Upload to Cloudinary or Encrypted Local Vault
     const uploadResult = await uploadMedicalDocument(file.buffer, file.originalname, file.mimetype);
+    const cleanDoctorUnitId = doctorUnitId ? doctorUnitId.trim().toUpperCase() : null;
 
-    // 3. Create Medical Record in DB
     const record = await prisma.medicalRecord.create({
       data: {
         patientId: userId,
         originalFilename: file.originalname,
         storageKey: uploadResult.storageKey,
+        fileUrl: uploadResult.url,
+        doctorUnitId: cleanDoctorUnitId,
         mimeType: file.mimetype,
         fileSizeBytes: BigInt(uploadResult.bytes),
         sha256Checksum,
@@ -40,16 +45,54 @@ export class RecordsService {
 
     logger.info(`Document uploaded: ${record.id} (${record.documentType}) for user ${userId}`);
 
-    // 4. Trigger Medi-AI Vision / Clinical Document Extraction
+    // Check for active consultations and alert authorized doctors via SMTP email
+    prisma.patientAccessDelegation.findMany({
+      where: {
+        patientId: userId,
+        status: 'ACTIVE',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        allottedDoctor: true,
+        patient: { include: { patientProfile: true } },
+      },
+    }).then((delegations) => {
+      for (const del of delegations) {
+        if (del.allottedDoctor?.professionalEmail) {
+          mailerService.sendRecordUploadedEmail({
+            doctorEmail: del.allottedDoctor.professionalEmail,
+            doctorName: del.allottedDoctor.fullName,
+            patientName: del.patient.patientProfile?.fullName || 'Patient',
+            patientUnitId: del.patient.medilockerId,
+            documentType: record.documentType,
+            originalFilename: record.originalFilename,
+            recordId: record.id,
+          }).catch((err) => logger.warn('Failed to notify doctor by email:', err?.message));
+        }
+      }
+    }).catch(() => {});
+
     try {
       const extracted = await AIService.analyzeDocument(file.buffer, file.mimetype, file.originalname, note);
 
-      // Create Timeline Event with strict ddmmyyyy format
+      let finalEventDate = extracted.eventDateDdmmyyyy;
+      if (eventDate) {
+        const clean = eventDate.replace(/[^0-9]/g, '');
+        if (clean.length === 8) {
+          if (eventDate.includes('-') && eventDate.startsWith('20')) {
+            const parts = eventDate.split('-');
+            finalEventDate = `${parts[2]}${parts[1]}${parts[0]}`;
+          } else {
+            finalEventDate = clean;
+          }
+        }
+      }
+
       const timelineEvent = await prisma.timelineEvent.create({
         data: {
           recordId: record.id,
           patientId: userId,
-          eventDateDdmmyyyy: extracted.eventDateDdmmyyyy,
+          eventDateDdmmyyyy: finalEventDate,
           doctorName: extracted.doctorName,
           clinicName: extracted.clinicName,
           diagnoses: extracted.diagnoses,
@@ -59,7 +102,10 @@ export class RecordsService {
         },
       });
 
-      // If prescription or clinical document has prescribed medications, populate active courses and to-do items
+      const isStillNeeded = isMedicineStillNeeded !== false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       if (extracted.prescribedMedications && extracted.prescribedMedications.length > 0) {
         for (const med of extracted.prescribedMedications) {
           const startDate = med.courseStartDate ? new Date(med.courseStartDate) : new Date();
@@ -78,58 +124,57 @@ export class RecordsService {
               courseStartDate: startDate,
               courseEndDate: endDate,
               totalQuantityNeeded: Number(med.totalQuantityNeeded) || 10,
-              isActive: true,
+              isActive: isStillNeeded,
             },
           });
 
-          const freq = (med.frequency || '').toLowerCase();
-          const timing = (med.timingInstruction || '').toLowerCase();
+          const isTodayWithinCourse = isStillNeeded && (startDate <= today && today <= endDate);
+          if (isTodayWithinCourse) {
+            const freq = (med.frequency || '').toLowerCase();
+            const timing = (med.timingInstruction || '').toLowerCase();
 
-          // Morning dose
-          if (freq.includes('1-') || freq.includes('morning') || freq.includes('once') || timing.includes('breakfast') || timing.includes('morning') || (!freq && !timing)) {
-            await prisma.dailyTodoItem.create({
-              data: {
-                patientId: userId,
-                medicationId: createdMed.id,
-                scheduleDate: new Date(),
-                timeSlot: 'MORNING',
-                taskLabel: `${med.medicineName} (${med.dosage || '1 tab'}) - Morning after breakfast`,
-                isCompleted: false,
-              },
-            });
-          }
+            if (freq.includes('1-') || freq.includes('morning') || freq.includes('once') || timing.includes('breakfast') || timing.includes('morning') || (!freq && !timing)) {
+              await prisma.dailyTodoItem.create({
+                data: {
+                  patientId: userId,
+                  medicationId: createdMed.id,
+                  scheduleDate: today,
+                  timeSlot: 'MORNING',
+                  taskLabel: `${med.medicineName} (${med.dosage || '1 tab'}) - Morning after breakfast`,
+                  isCompleted: false,
+                },
+              });
+            }
 
-          // Afternoon dose
-          if (freq.includes('-1-') || freq.includes('afternoon') || freq.includes('twice') || freq.includes('thrice') || timing.includes('lunch')) {
-            await prisma.dailyTodoItem.create({
-              data: {
-                patientId: userId,
-                medicationId: createdMed.id,
-                scheduleDate: new Date(),
-                timeSlot: 'AFTERNOON',
-                taskLabel: `${med.medicineName} (${med.dosage || '1 tab'}) - Afternoon after lunch`,
-                isCompleted: false,
-              },
-            });
-          }
+            if (freq.includes('-1-') || freq.includes('afternoon') || freq.includes('twice') || freq.includes('thrice') || timing.includes('lunch')) {
+              await prisma.dailyTodoItem.create({
+                data: {
+                  patientId: userId,
+                  medicationId: createdMed.id,
+                  scheduleDate: today,
+                  timeSlot: 'AFTERNOON',
+                  taskLabel: `${med.medicineName} (${med.dosage || '1 tab'}) - Afternoon after lunch`,
+                  isCompleted: false,
+                },
+              });
+            }
 
-          // Night dose
-          if (freq.includes('-1') || freq.includes('night') || freq.includes('bedtime') || timing.includes('dinner') || timing.includes('bedtime')) {
-            await prisma.dailyTodoItem.create({
-              data: {
-                patientId: userId,
-                medicationId: createdMed.id,
-                scheduleDate: new Date(),
-                timeSlot: 'NIGHT',
-                taskLabel: `${med.medicineName} (${med.dosage || '1 tab'}) - Night after dinner`,
-                isCompleted: false,
-              },
-            });
+            if (freq.includes('-1') || freq.includes('night') || freq.includes('bedtime') || timing.includes('dinner') || timing.includes('bedtime')) {
+              await prisma.dailyTodoItem.create({
+                data: {
+                  patientId: userId,
+                  medicationId: createdMed.id,
+                  scheduleDate: today,
+                  timeSlot: 'NIGHT',
+                  taskLabel: `${med.medicineName} (${med.dosage || '1 tab'}) - Night after dinner`,
+                  isCompleted: false,
+                },
+              });
+            }
           }
         }
       }
 
-      // If clinical tests are due, schedule diagnostic to-do tasks
       if (Array.isArray(extracted.clinicalTestsDue) && extracted.clinicalTestsDue.length > 0) {
         for (const test of extracted.clinicalTestsDue) {
           const testName = typeof test === 'string' ? test : test.testName || 'Clinical Investigation';
@@ -146,16 +191,16 @@ export class RecordsService {
         }
       }
 
-      // Mark record as COMPLETED
       await prisma.medicalRecord.update({
         where: { id: record.id },
-        data: { processingStatus: ProcessingStatus.COMPLETED },
+        data: {
+          processingStatus: ProcessingStatus.COMPLETED,
+        },
       });
 
       logger.info(`Medi-AI extraction completed for record ${record.id}, timeline event ${timelineEvent.id}`);
 
-      // Invalidate patient's records, timeline, and daily todos
-      cacheService.invalidatePrefix(`records:list:${userId}`);
+      cacheService.invalidatePrefix(`records:${userId}`);
       cacheService.invalidatePrefix(`timeline:${userId}`);
       cacheService.invalidatePrefix(`todo:today:${userId}`);
 
@@ -217,7 +262,6 @@ export class RecordsService {
       ? data.diagnoses
       : [data.diagnoses || data.title || 'General Clinical Consultation'];
 
-    // If no prescribed medications provided in payload, analyze the note text with Medi-AI
     const noteText = data.clinicalSummary || data.diagnosis || data.title || '';
     if ((!data.prescribedMedications || data.prescribedMedications.length === 0) && noteText.length > 5) {
       try {
@@ -271,7 +315,6 @@ export class RecordsService {
         const freq = (med.frequency || '').toLowerCase();
         const timing = (med.timing || med.timingInstruction || '').toLowerCase();
 
-        // Morning task
         if (freq.includes('1-') || freq.includes('morning') || freq.includes('once') || timing.includes('breakfast') || timing.includes('morning') || (!freq && !timing)) {
           await prisma.dailyTodoItem.create({
             data: {
@@ -285,7 +328,6 @@ export class RecordsService {
           });
         }
 
-        // Afternoon task
         if (freq.includes('-1-') || freq.includes('afternoon') || freq.includes('twice') || freq.includes('thrice') || timing.includes('lunch')) {
           await prisma.dailyTodoItem.create({
             data: {
@@ -299,7 +341,6 @@ export class RecordsService {
           });
         }
 
-        // Night task
         if (freq.includes('-1') || freq.includes('night') || freq.includes('bedtime') || timing.includes('dinner') || timing.includes('bedtime')) {
           await prisma.dailyTodoItem.create({
             data: {
@@ -315,7 +356,6 @@ export class RecordsService {
       }
     }
 
-    // Schedule clinical tests due into patient's daily to-do checklist
     const testsList = data.clinicalTestsDue || data.testsDue || [];
     if (Array.isArray(testsList) && testsList.length > 0) {
       for (const test of testsList) {
@@ -333,8 +373,7 @@ export class RecordsService {
       }
     }
 
-    // Invalidate patient's records, timeline, and daily todos
-    cacheService.invalidatePrefix(`records:list:${userId}`);
+    cacheService.invalidatePrefix(`records:${userId}`);
     cacheService.invalidatePrefix(`timeline:${userId}`);
     cacheService.invalidatePrefix(`todo:today:${userId}`);
 
@@ -397,7 +436,6 @@ export class RecordsService {
       };
     });
 
-    // Cache records for 5 minutes
     cacheService.set(cacheKey, result, 300);
 
     return result;
@@ -424,5 +462,100 @@ export class RecordsService {
       ...record,
       fileSizeBytes: record.fileSizeBytes.toString(),
     };
+  }
+
+  /**
+   * Securely retrieve medical document file / URL for patient or authorized doctor/hospital
+   */
+  static async getSecureRecordView(userId: string, userRole: string, recordId: string) {
+    const record = await prisma.medicalRecord.findUnique({
+      where: { id: recordId },
+      include: {
+        patient: {
+          include: { patientProfile: true },
+        },
+      },
+    });
+
+    if (!record) {
+      throw new AppError('Medical record not found.', 404);
+    }
+
+    if (userRole === 'PATIENT') {
+      if (record.patientId !== userId) {
+        throw new AppError('Unauthorized access to medical record.', 403);
+      }
+      return record;
+    }
+
+    const now = new Date();
+    let authorized = false;
+
+    if (userRole === 'DOCTOR') {
+      const docProfile = await prisma.doctorProfile.findUnique({
+        where: { userId },
+      });
+      if (docProfile) {
+        const activeDel = await prisma.patientAccessDelegation.findFirst({
+          where: {
+            patientId: record.patientId,
+            allottedDoctorId: docProfile.id,
+            status: 'ACTIVE',
+            expiresAt: { gt: now },
+          },
+        });
+        if (activeDel) authorized = true;
+      }
+    } else if (userRole === 'HOSPITAL') {
+      const hospProfile = await prisma.hospitalProfile.findUnique({
+        where: { userId },
+      });
+      if (hospProfile) {
+        const activeDel = await prisma.patientAccessDelegation.findFirst({
+          where: {
+            patientId: record.patientId,
+            hospitalId: hospProfile.id,
+            status: 'ACTIVE',
+            expiresAt: { gt: now },
+          },
+        });
+        if (activeDel) authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      throw new AppError('Access Denied: You do not have active consultation authorization to view this document.', 403);
+    }
+
+    return record;
+  }
+
+  /**
+   * Permanently delete a patient's medical record and linked files
+   */
+  static async deleteRecord(recordId: string, userId: string) {
+    const record = await prisma.medicalRecord.findFirst({
+      where: { id: recordId, patientId: userId },
+    });
+
+    if (!record) {
+      throw new AppError('Medical record not found or you are not authorized to delete it.', 404);
+    }
+
+    if (record.storageKey && fs.existsSync(record.storageKey)) {
+      try {
+        fs.unlinkSync(record.storageKey);
+      } catch (_) {}
+    }
+
+    await prisma.medicalRecord.delete({
+      where: { id: recordId },
+    });
+
+    // Invalidate caches
+    cacheService.del(`records:${userId}`);
+    cacheService.del(`timeline:${userId}`);
+
+    return { message: 'Medical record deleted successfully.' };
   }
 }

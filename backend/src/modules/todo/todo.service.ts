@@ -3,6 +3,7 @@ import { prisma } from '../../database/prisma';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
 import { cacheService } from '../../utils/cache';
+import { mailerService } from '../../utils/mailer';
 
 export class TodoService {
   /**
@@ -151,6 +152,24 @@ export class TodoService {
     cacheService.invalidatePrefix(`todo:today:${userId}`);
 
     logger.info(`Daily feeling logged for user ${userId}: ${severityColor} (Score: ${feelingScore})`);
+
+    // If severe symptoms or adverse reaction reported, send urgent patient advisory email
+    if (severityColor === SeverityColor.RED) {
+      prisma.user.findUnique({
+        where: { id: userId },
+        include: { patientProfile: true },
+      }).then((u) => {
+        if (u) {
+          mailerService.sendCriticalAdverseSymptomEmail({
+            patientEmail: u.email,
+            patientName: u.patientProfile?.fullName || 'Valued Patient',
+            feelingScore,
+            feedback,
+            dateStr: today.toLocaleDateString('en-GB'),
+          }).catch((err) => logger.warn('Critical adverse symptom email failed:', err?.message));
+        }
+      }).catch(() => {});
+    }
 
     return log;
   }

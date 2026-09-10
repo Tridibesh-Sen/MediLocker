@@ -6,7 +6,6 @@ import crypto from 'crypto';
  * Example: ML-842-195-730
  */
 export function generateMediLockerId(): string {
-  // Generate 9 random digits between 0-9
   const randomNumbers: number[] = [];
   for (let i = 0; i < 9; i++) {
     randomNumbers.push(crypto.randomInt(0, 10));

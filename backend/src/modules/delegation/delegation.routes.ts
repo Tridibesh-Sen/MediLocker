@@ -5,7 +5,6 @@ import { UserRole } from '@prisma/client';
 
 const router = Router();
 
-// Provider search patient by 9-digit Unit ID (returns ONLY Name and DOB)
 router.get(
   '/search-patient',
   authenticate,
@@ -19,7 +18,6 @@ router.post(
   DelegationController.searchPatient
 );
 
-// Provider sends access request with specified duration (30m to 7 days)
 router.post(
   '/create-request',
   authenticate,
@@ -27,7 +25,6 @@ router.post(
   DelegationController.createRequest
 );
 
-// Doctor verifies 6-digit code provided by patient to unlock records
 router.post(
   '/verify-code',
   authenticate,
@@ -35,7 +32,6 @@ router.post(
   DelegationController.verifyCode
 );
 
-// Patient checks incoming access requests and active delegations in Consent & Access tab
 router.get(
   '/patient-requests',
   authenticate,
@@ -43,14 +39,12 @@ router.get(
   DelegationController.getPatientRequests
 );
 
-// Patient or provider revokes delegation
 router.post(
   '/revoke',
   authenticate,
   DelegationController.revokeDelegation
 );
 
-// Doctor views active authorized patient roster
 router.get(
   '/doctor/active-patients',
   authenticate,
@@ -58,7 +52,13 @@ router.get(
   DelegationController.getActivePatients
 );
 
-// Doctor views full patient records & dashboard while active
+router.get(
+  '/provider/pending-requests',
+  authenticate,
+  requireRole(UserRole.DOCTOR, UserRole.HOSPITAL),
+  DelegationController.getProviderPendingRequests
+);
+
 router.get(
   '/doctor/patient/:patientId/full-data',
   authenticate,

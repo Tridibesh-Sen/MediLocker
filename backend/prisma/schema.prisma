@@ -65,6 +65,13 @@ enum ScanMethod {
   MANUAL
 }
 
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
 model User {
   id                   String            @id @default(uuid())
   medilockerId         String            @unique @map("medilocker_id")
@@ -91,6 +98,7 @@ model User {
   homeSupplies         MedicineInventoryHome[]
   refillReminders      RefillReminder[]
   delegations          PatientAccessDelegation[]
+  appointments         Appointment[]
   auditLogs            AuditLog[]
 
   @@map("users")
@@ -142,12 +150,15 @@ model DoctorProfile {
   clinicAddress         String             @map("clinic_address")
   city                  String
   state                 String?
+  degree                String?
+  certificateUrl        String?            @map("certificate_url")
   verificationStatus    VerificationStatus @default(PENDING_VERIFICATION) @map("verification_status")
   createdAt             DateTime           @default(now()) @map("created_at")
   updatedAt             DateTime           @updatedAt @map("updated_at")
 
   hospitalDoctors       HospitalDoctor[]
   assignedDelegations   PatientAccessDelegation[]
+  appointments          Appointment[]
 
   @@map("doctor_profiles")
 }
@@ -166,8 +177,14 @@ model HospitalProfile {
   city                     String
   state                    String?
   hospitalType             String?            @map("hospital_type")
+  hospitalOwnership        String?            @default("PRIVATE") @map("hospital_ownership")
   bedCapacity              Int                @default(0) @map("bed_capacity")
   authorizedRepresentative String?            @map("authorized_representative")
+  managingDirectorName      String?            @map("managing_director_name")
+  managingDirectorContact   String?            @map("managing_director_contact")
+  govtSchemesAvailable      Boolean            @default(false) @map("govt_schemes_available")
+  govtSchemesList           String[]           @default([]) @map("govt_schemes_list")
+  registrationCertificateUrl String?          @map("registration_certificate_url")
   verificationStatus       VerificationStatus @default(PENDING_VERIFICATION) @map("verification_status")
   verificationRef          String?            @map("verification_ref")
   createdAt                DateTime           @default(now()) @map("created_at")
@@ -204,6 +221,8 @@ model MedicalRecord {
   sha256Checksum   String           @map("sha256_checksum")
   documentType     DocumentType     @map("document_type")
   userNote         String?          @map("user_note")
+  fileUrl          String?          @map("file_url")
+  doctorUnitId     String?          @map("doctor_unit_id")
   processingStatus ProcessingStatus @default(PENDING) @map("processing_status")
   uploadedAt       DateTime         @default(now()) @map("uploaded_at")
 
@@ -364,4 +383,22 @@ model AuditLog {
 
   @@index([userId, action, createdAt])
   @@map("audit_logs")
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  patientId       String            @map("patient_id")
+  patient         User              @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId        String            @map("doctor_id")
+  doctor          DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointmentDate DateTime          @map("appointment_date")
+  timeSlot        String            @map("time_slot")
+  status          AppointmentStatus @default(PENDING)
+  reason          String?
+  notes           String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([patientId, doctorId, appointmentDate])
+  @@map("appointments")
 }

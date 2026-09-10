@@ -78,17 +78,25 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 
-# Test scripts, code, and fixtures
+# Test suites, scripts, and coverage
 test/
 tests/
 __tests__/
-*test*.js
-*test*.ts
-*test*.mjs
+coverage/
+.nyc_output/
+*.test.ts
+*.test.js
+*.test.mjs
+*.test.cjs
+*.spec.ts
+*.spec.js
+*.spec.mjs
+*.spec.cjs
 test-*.js
+test-*.ts
 clean-*.js
-*.test.*
-*.spec.*
+test_*.py
+!frontend/tests.html
 
 # Reference documents and schema dumps
 docx/

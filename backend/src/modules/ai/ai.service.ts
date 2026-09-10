@@ -31,17 +31,14 @@ export class AIService {
   private static currentKeyIndex = 0;
   private static apiUrl = 'https://api.mistral.ai/v1';
 
-  // Key check
   private static get apiKey(): string | undefined {
     return this.apiKeys[0];
   }
 
-  // Key rotation
   private static getActiveKeys(): string[] {
     return this.apiKeys.length > 0 ? this.apiKeys : [];
   }
 
-  // Mistral OCR helper with multi-key failover
   private static async runMistralOcr(fileBuffer: Buffer, mimeType: string): Promise<string> {
     const keys = this.getActiveKeys();
     if (keys.length === 0) throw new Error('No Mistral API keys configured');
@@ -89,7 +86,6 @@ export class AIService {
     throw lastError || new Error('All Mistral OCR keys failed');
   }
 
-  // Mistral Chat helper with multi-key failover
   private static async runMistralChat(messages: Array<{ role: string; content: string }>, jsonFormat: boolean = false): Promise<string> {
     const keys = this.getActiveKeys();
     if (keys.length === 0) throw new Error('No Mistral API keys configured');
@@ -135,7 +131,6 @@ export class AIService {
     throw lastError || new Error('All Mistral chat keys failed');
   }
 
-  // Analyze document
   static async analyzeDocument(
     fileBuffer: Buffer,
     mimeType: string,
@@ -154,7 +149,6 @@ export class AIService {
     }
 
     try {
-      // 1. Run Mistral OCR
       let ocrText = '';
       try {
         ocrText = await this.runMistralOcr(fileBuffer, mimeType);
@@ -162,12 +156,10 @@ export class AIService {
         logger.warn('Mistral OCR extraction failed, checking for accompanying note:', ocrErr?.message);
       }
 
-      // If OCR returned empty but user provided clinical notes
       if ((!ocrText || ocrText.trim().length === 0) && userNote && userNote.trim().length > 3) {
         return await this.analyzeClinicalText(userNote, defaultDdmmyyyy);
       }
 
-      // 2. Format clinical entities with Mistral Chat
       const prompt = `You are Medi-AI, an expert clinical document intelligence parser for MediLocker.
 Analyze the following clinical text extracted via OCR from a medical prescription or lab report, along with any accompanying patient or doctor note:
 
@@ -238,7 +230,6 @@ Rule: eventDateDdmmyyyy must be strictly 8 digits (e.g. 05092026 for 5 Sep 2026)
     }
   }
 
-  // Analyze blister foil / packaging photo
   static async analyzeFoil(fileBuffer: Buffer, mimeType: string) {
     if (!this.apiKey) {
       return {
@@ -310,7 +301,6 @@ Return strictly JSON:
     }
   }
 
-  // Categorize medicine
   static async categorizeMedicine(medicineName: string) {
     if (!this.apiKey) {
       return {
@@ -350,12 +340,10 @@ Return strictly JSON:
     }
   }
 
-  // Chat with companion
   static async chatWithCompanion(
     userMessage: string,
     clinicalContext: PatientClinicalContext
   ): Promise<{ response: string; emergencyBypass: boolean; recommendedHomeItem?: string }> {
-    // 1. Emergency Red-Flag Triage
     if (ClinicalGuardrails.isEmergency(userMessage)) {
       return {
         response: ClinicalGuardrails.getEmergencyResponse(),
@@ -363,7 +351,6 @@ Return strictly JSON:
       };
     }
 
-    // 2. Non-Medical Request Guardrail (Refuse coding, programming, math, general trivia)
     if (ClinicalGuardrails.isNonMedical(userMessage)) {
       return {
         response: ClinicalGuardrails.getNonMedicalRefusal(),
@@ -371,7 +358,6 @@ Return strictly JSON:
       };
     }
 
-    // 3. User Documented Allergy Direct Conflict Check
     const allergyConflict = ClinicalGuardrails.checkDirectAllergyConflict(clinicalContext, userMessage);
     if (allergyConflict.hasConflict) {
       return {
@@ -386,7 +372,6 @@ ${ClinicalGuardrails.getStandardDisclaimer()}`,
       };
     }
 
-    // 4. Restricted Prescription-Only Drugs / Antibiotics Blocker
     const restrictedDrug = ClinicalGuardrails.isRestrictedDrugRequest(userMessage);
     if (restrictedDrug.isRestricted) {
       return {
@@ -488,7 +473,6 @@ ${ClinicalGuardrails.getStandardDisclaimer()}`,
     }
   }
 
-  // Analyze raw clinical text / notes using Mistral Chat
   static async analyzeClinicalText(text: string, defaultDate: string): Promise<ExtractedPrescription> {
     if (!this.apiKey || !text || text.trim().length < 5) {
       return this.getCleanExtraction(defaultDate, 'Prescription Note');
@@ -553,7 +537,6 @@ Rule: eventDateDdmmyyyy must be strictly 8 digits (e.g. ${defaultDate}). If no m
     }
   }
 
-  // Clean fallback when OCR/Chat fails or no medicines detected (NO MOCK DATA)
   private static getCleanExtraction(defaultDate: string, filename: string): ExtractedPrescription {
     return {
       eventDateDdmmyyyy: defaultDate,

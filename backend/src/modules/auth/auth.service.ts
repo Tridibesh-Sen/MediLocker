@@ -7,6 +7,7 @@ import { generateMediLockerId } from '../../utils/idGenerator';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
 import { cacheService } from '../../utils/cache';
+import { mailerService } from '../../utils/mailer';
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -35,7 +36,6 @@ export class AuthService {
       throw new AppError(`An account with email "${cleanEmail}" is already registered (Associated Unit ID: ${existing.medilockerId}). Duplicate accounts for the same email are not allowed. Please sign in.`, 409);
     }
 
-    // Generate unique 9-digit MediLocker Unit ID
     let unitId = generateMediLockerId();
     let collisionCheck = await prisma.user.findUnique({ where: { medilockerId: unitId } }).catch(() => null);
     while (collisionCheck) {
@@ -43,7 +43,6 @@ export class AuthService {
       collisionCheck = await prisma.user.findUnique({ where: { medilockerId: unitId } }).catch(() => null);
     }
 
-    // Hash MPIN if provided during registration
     let mpinHash: string | null = null;
     if (data.mpin) {
       mpinHash = await argon2.hash(data.mpin, {
@@ -54,7 +53,6 @@ export class AuthService {
       });
     }
 
-    // Create User record
     const user = await prisma.user.create({
       data: {
         medilockerId: unitId,
@@ -66,7 +64,6 @@ export class AuthService {
       },
     });
 
-    // Create Role-Specific Profile
     if (data.role === UserRole.PATIENT) {
       await prisma.patientProfile.create({
         data: {
@@ -97,6 +94,8 @@ export class AuthService {
           institutionalDoctorId: data.institutionalDoctorId || data.doctorId || `DOC-${Date.now().toString().slice(-6)}`,
           registrationNumber: data.registrationNumber,
           specialization: data.specialization || 'General Medicine',
+          degree: data.degree || null,
+          certificateUrl: data.certificateUrl || null,
           registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
           yearsExperience: Number(data.yearsExperience || data.experience) || 0,
           clinicName: data.clinicName || 'Clinical Practice',
@@ -108,28 +107,49 @@ export class AuthService {
         },
       });
     } else if (data.role === UserRole.HOSPITAL) {
+      const schemes = Array.isArray(data.govtSchemesList)
+        ? data.govtSchemesList
+        : data.govtSchemes
+        ? String(data.govtSchemes).split(',').map((s: string) => s.trim()).filter(Boolean)
+        : [];
+
       await prisma.hospitalProfile.create({
         data: {
           userId: user.id,
-          hospitalName: data.name,
+          hospitalName: data.name || data.hospitalName || 'Hospital',
           officialEmail: data.email.toLowerCase(),
           phone: data.phone,
           hospitalId: data.hospitalId,
-          licenseNumber: data.license,
+          licenseNumber: data.license || data.hospitalLicense || `HOSP-${Date.now().toString().slice(-6)}`,
           registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          hospitalType: data.hospitalType,
-          bedCapacity: Number(data.beds) || 0,
-          authorizedRepresentative: data.representative,
+          address: data.address || data.hospitalAddress || 'Hospital Address',
+          city: data.city || data.hospitalCity || 'City',
+          state: data.state || data.hospitalState || 'State',
+          hospitalType: data.hospitalType || 'General Hospital',
+          hospitalOwnership: (data.hospitalOwnership || 'PRIVATE').toUpperCase(),
+          bedCapacity: Number(data.beds || data.bedCapacity) || 0,
+          authorizedRepresentative: data.representative || data.authorizedRepresentative,
+          managingDirectorName: data.managingDirectorName || data.mdName || null,
+          managingDirectorContact: data.managingDirectorContact || data.mdPhone || null,
+          govtSchemesAvailable: Boolean(data.govtSchemesAvailable || schemes.length > 0),
+          govtSchemesList: schemes,
+          registrationCertificateUrl: data.registrationCertificateUrl || null,
           verificationStatus: 'PENDING_VERIFICATION',
-          verificationRef: data.verificationRef,
+          verificationRef: data.verificationRef || data.hospitalVerificationRef,
         },
       });
     }
 
     logger.info(`User registered successfully: ${user.medilockerId} (${user.role})`);
+
+    mailerService
+      .sendWelcomeEmail({
+        to: user.email,
+        fullName: data.name || data.fullName || data.hospitalName || 'Valued User',
+        role: user.role,
+        medilockerId: user.medilockerId,
+      })
+      .catch((err) => logger.warn('Background welcome email dispatch failed:', err?.message));
 
     const token = jwt.sign(
       {
@@ -236,7 +256,6 @@ export class AuthService {
 
     let user: any = null;
 
-    // Both email and Unit ID provided: STRICT 2-WAY CHECK
     if (email && medilockerId) {
       const userByEmail = await prisma.user.findUnique({
         where: { email },
@@ -288,7 +307,6 @@ export class AuthService {
       throw new AppError(`This account is registered under the ${user.role} portal. Please select the correct portal tab.`, 403);
     }
 
-    // Verify MPIN if configured
     if (user.mpinHash) {
       if (!mpin) {
         throw new AppError('6-digit MPIN is required for this account.', 401);
@@ -333,7 +351,6 @@ export class AuthService {
       },
     };
 
-    // Cache user profile and unit details in-memory/Redis immediately
     cacheService.setUserProfile(user.id, resultUser, 600);
     cacheService.setUserByUnit(user.medilockerId, resultUser, 900);
 
@@ -527,13 +544,11 @@ export class AuthService {
    * Get authenticated user profile (Accelerated with in-memory / Redis cache)
    */
   static async getMe(userId: string) {
-    // 1. Fast Cache Lookup
     const cached = await cacheService.getUserProfile(userId);
     if (cached) {
       return cached;
     }
 
-    // 2. Query Database via Prisma
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -558,9 +573,16 @@ export class AuthService {
       name,
       role: user.role.toLowerCase(),
       phone: user.phone,
+      isVerified: user.isVerified,
+      patientProfile: user.patientProfile,
+      doctorProfile: user.doctorProfile,
+      hospitalProfile: user.hospitalProfile,
       bloodGroup: user.patientProfile?.bloodGroup || 'Not specified',
       allergies: user.patientProfile?.baselineAllergies
         ? user.patientProfile.baselineAllergies.split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
+      baselineMedications: user.patientProfile?.baselineMedications
+        ? user.patientProfile.baselineMedications.split(',').map((s) => s.trim()).filter(Boolean)
         : [],
       chronicConditions: user.patientProfile?.chronicConditions || [],
       emergencyContact: {
@@ -568,9 +590,26 @@ export class AuthService {
         phone: user.patientProfile?.emergencyContactPhone || user.phone,
         relation: 'Family',
       },
+      dob: user.patientProfile?.dob || null,
+      address: user.patientProfile?.addressLine || user.doctorProfile?.clinicAddress || user.hospitalProfile?.address || '',
+      city: user.patientProfile?.city || user.doctorProfile?.city || user.hospitalProfile?.city || '',
+      state: user.patientProfile?.state || user.doctorProfile?.state || user.hospitalProfile?.state || '',
+      pincode: user.patientProfile?.pincode || '',
+      insurance: user.patientProfile?.insuranceProvider || '',
+      govid: user.patientProfile?.govidEncrypted || '',
+      degree: user.doctorProfile?.degree || '',
+      specialization: user.doctorProfile?.specialization || '',
+      experience: user.doctorProfile?.yearsExperience || 0,
+      clinicName: user.doctorProfile?.clinicName || '',
+      hospitalType: user.hospitalProfile?.hospitalType || '',
+      hospitalOwnership: user.hospitalProfile?.hospitalOwnership || 'PRIVATE',
+      bedCapacity: user.hospitalProfile?.bedCapacity || 0,
+      managingDirectorName: user.hospitalProfile?.managingDirectorName || '',
+      managingDirectorContact: user.hospitalProfile?.managingDirectorContact || '',
+      govtSchemesAvailable: user.hospitalProfile?.govtSchemesAvailable || false,
+      govtSchemesList: user.hospitalProfile?.govtSchemesList || [],
     };
 
-    // 3. Store in cache for continuous fast retrieval (10 minutes)
     cacheService.setUserProfile(userId, result, 600);
     cacheService.setUserByUnit(user.medilockerId, result, 900);
 
@@ -578,48 +617,146 @@ export class AuthService {
   }
 
   /**
-   * Update patient profile baselines and emergency contacts
+   * Update profile for Patient, Doctor, or Hospital
    */
   static async updateProfile(userId: string, data: any) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { patientProfile: true },
+      include: {
+        patientProfile: true,
+        doctorProfile: true,
+        hospitalProfile: true,
+      },
     });
 
     if (!user) throw new AppError('User not found', 404);
+
+    if (data.phone) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { phone: String(data.phone).trim() },
+      });
+    }
 
     if (user.role === UserRole.PATIENT) {
       const allergiesStr = Array.isArray(data.allergies)
         ? data.allergies.join(', ')
         : (data.allergies || data.baselineAllergies || '');
+      const medsStr = Array.isArray(data.baselineMedications)
+        ? data.baselineMedications.join(', ')
+        : (data.medications || data.baselineMedications || '');
       const chronicList = Array.isArray(data.chronicConditions)
         ? data.chronicConditions
-        : (data.chronicConditions ? String(data.chronicConditions).split(',').map((s: string) => s.trim()) : []);
+        : (data.chronicConditions ? String(data.chronicConditions).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
 
       await prisma.patientProfile.upsert({
         where: { userId },
         update: {
+          fullName: data.fullName || data.name || user.patientProfile?.fullName || 'Patient',
+          dob: data.dob ? new Date(data.dob) : user.patientProfile?.dob,
+          bloodGroup: data.bloodGroup || user.patientProfile?.bloodGroup,
           baselineAllergies: allergiesStr,
+          baselineMedications: medsStr,
+          medicalHistory: data.medicalHistory || data.history || user.patientProfile?.medicalHistory,
           chronicConditions: chronicList,
-          emergencyContactName: data.emergencyContact?.name || data.emergencyContactName,
-          emergencyContactPhone: data.emergencyContact?.phone || data.emergencyContactPhone,
+          emergencyContactName: data.emergencyContactName || data.emergencyContact?.name || data.emergency || user.patientProfile?.emergencyContactName,
+          emergencyContactPhone: data.emergencyContactPhone || data.emergencyContact?.phone || user.patientProfile?.emergencyContactPhone,
+          addressLine: data.addressLine || data.address || user.patientProfile?.addressLine,
+          city: data.city || user.patientProfile?.city,
+          state: data.state || user.patientProfile?.state,
+          pincode: data.pincode || user.patientProfile?.pincode,
+          insuranceProvider: data.insuranceProvider || data.insurance || user.patientProfile?.insuranceProvider,
+          govidEncrypted: data.govid || user.patientProfile?.govidEncrypted,
         },
         create: {
           userId,
-          fullName: data.name || user.email.split('@')[0],
+          fullName: data.fullName || data.name || user.email.split('@')[0],
+          dob: data.dob ? new Date(data.dob) : null,
+          bloodGroup: data.bloodGroup || 'Not specified',
           baselineAllergies: allergiesStr,
+          baselineMedications: medsStr,
           chronicConditions: chronicList,
-          emergencyContactName: data.emergencyContact?.name || '',
-          emergencyContactPhone: data.emergencyContact?.phone || '',
+          emergencyContactName: data.emergencyContactName || data.emergencyContact?.name || '',
+          emergencyContactPhone: data.emergencyContactPhone || data.emergencyContact?.phone || '',
+          addressLine: data.addressLine || data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          pincode: data.pincode || '',
+          insuranceProvider: data.insuranceProvider || data.insurance || '',
+        },
+      });
+    } else if (user.role === UserRole.DOCTOR) {
+      await prisma.doctorProfile.upsert({
+        where: { userId },
+        update: {
+          fullName: data.fullName || data.name || user.doctorProfile?.fullName,
+          degree: data.degree !== undefined ? data.degree : user.doctorProfile?.degree,
+          specialization: data.specialization || user.doctorProfile?.specialization,
+          yearsExperience: data.experience !== undefined ? Number(data.experience) : user.doctorProfile?.yearsExperience,
+          clinicName: data.clinicName || user.doctorProfile?.clinicName,
+          clinicAddress: data.clinicAddress || data.address || user.doctorProfile?.clinicAddress,
+          city: data.city || user.doctorProfile?.city,
+          state: data.state || user.doctorProfile?.state,
+          certificateUrl: data.certificateUrl !== undefined ? data.certificateUrl : user.doctorProfile?.certificateUrl,
+        },
+        create: {
+          userId,
+          fullName: data.fullName || data.name || 'Doctor',
+          professionalEmail: user.email,
+          phone: user.phone,
+          institutionalDoctorId: `DOC-${Date.now().toString().slice(-6)}`,
+          registrationNumber: data.registrationNumber || `REG-${Date.now().toString().slice(-6)}`,
+          specialization: data.specialization || 'General Medicine',
+          degree: data.degree || null,
+          clinicName: data.clinicName || 'Clinic',
+          clinicAddress: data.clinicAddress || data.address || 'Address',
+          city: data.city || 'City',
+          state: data.state || 'State',
+        },
+      });
+    } else if (user.role === UserRole.HOSPITAL) {
+      const schemes = Array.isArray(data.govtSchemesList)
+        ? data.govtSchemesList
+        : data.govtSchemes
+        ? String(data.govtSchemes).split(',').map((s: string) => s.trim()).filter(Boolean)
+        : user.hospitalProfile?.govtSchemesList || [];
+
+      await prisma.hospitalProfile.upsert({
+        where: { userId },
+        update: {
+          hospitalName: data.hospitalName || data.name || user.hospitalProfile?.hospitalName,
+          address: data.address || user.hospitalProfile?.address,
+          city: data.city || user.hospitalProfile?.city,
+          state: data.state || user.hospitalProfile?.state,
+          hospitalType: data.hospitalType || user.hospitalProfile?.hospitalType,
+          hospitalOwnership: data.hospitalOwnership ? String(data.hospitalOwnership).toUpperCase() : user.hospitalProfile?.hospitalOwnership,
+          bedCapacity: data.bedCapacity !== undefined ? Number(data.bedCapacity) : (data.beds !== undefined ? Number(data.beds) : user.hospitalProfile?.bedCapacity),
+          authorizedRepresentative: data.authorizedRepresentative || data.representative || user.hospitalProfile?.authorizedRepresentative,
+          managingDirectorName: data.managingDirectorName || data.mdName || user.hospitalProfile?.managingDirectorName,
+          managingDirectorContact: data.managingDirectorContact || data.mdPhone || user.hospitalProfile?.managingDirectorContact,
+          govtSchemesAvailable: data.govtSchemesAvailable !== undefined ? Boolean(data.govtSchemesAvailable) : user.hospitalProfile?.govtSchemesAvailable,
+          govtSchemesList: schemes,
+          registrationCertificateUrl: data.registrationCertificateUrl !== undefined ? data.registrationCertificateUrl : user.hospitalProfile?.registrationCertificateUrl,
+        },
+        create: {
+          userId,
+          hospitalName: data.hospitalName || data.name || 'Hospital',
+          officialEmail: user.email,
+          phone: user.phone,
+          hospitalId: `HOSP-${Date.now().toString().slice(-6)}`,
+          licenseNumber: `LIC-${Date.now().toString().slice(-6)}`,
+          address: data.address || 'Address',
+          city: data.city || 'City',
+          state: data.state || 'State',
+          hospitalOwnership: (data.hospitalOwnership || 'PRIVATE').toUpperCase(),
+          bedCapacity: Number(data.bedCapacity || data.beds) || 0,
         },
       });
     }
 
-    // Invalidate stale cache immediately
     cacheService.invalidateUserProfile(userId);
     cacheService.invalidateUserByUnit(user.medilockerId);
 
     return this.getMe(userId);
   }
 }
-

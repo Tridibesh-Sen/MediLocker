@@ -19,4 +19,13 @@ export class TimelineController {
       next(error);
     }
   }
+
+  static async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TimelineService.deleteTimelineEvent(req.params.id, req.user!.userId);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
