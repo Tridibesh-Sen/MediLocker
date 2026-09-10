@@ -14,6 +14,11 @@ import { appointmentRoutes } from './modules/appointments/appointments.routes';
 import { TodoService } from './modules/todo/todo.service';
 import { mailerService } from './utils/mailer';
 
+// Enable automatic JSON serialization for Prisma BigInt fields across all endpoints
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 export const app = express();
 
 app.use((req, res, next) => {

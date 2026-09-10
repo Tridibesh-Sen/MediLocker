@@ -548,13 +548,38 @@ export class DelegationService {
   }
 
   /**
-   * Doctor retrieves full patient dashboard & clinical information under active authorization
+   * Doctor or Hospital retrieves full patient dashboard & clinical information under active authorization
    */
-  static async getAuthorizedPatientFullData(doctorUserId: string, patientMedilockerOrId: string) {
+  static async getAuthorizedPatientFullData(
+    providerUserId: string,
+    patientMedilockerOrId: string,
+    providerRole?: UserRole
+  ) {
+    let doctorProfileId: string | null = null;
+    let hospitalProfileId: string | null = null;
+
     const docProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: doctorUserId },
+      where: { userId: providerUserId },
     });
-    if (!docProfile) throw new AppError('Doctor profile not found.', 404);
+
+    if (docProfile) {
+      doctorProfileId = docProfile.id;
+    } else {
+      const hospProfile = await prisma.hospitalProfile.findUnique({
+        where: { userId: providerUserId },
+      });
+      if (hospProfile) {
+        hospitalProfileId = hospProfile.id;
+        const docMapping = await prisma.hospitalDoctor.findFirst({
+          where: { hospitalId: hospProfile.id, isActive: true },
+        });
+        if (docMapping) doctorProfileId = docMapping.doctorId;
+      }
+    }
+
+    if (!doctorProfileId && !hospitalProfileId) {
+      throw new AppError('Healthcare provider profile not found.', 404);
+    }
 
     // Find patient by ID or Unit ID
     const cleanParam = patientMedilockerOrId.trim();
@@ -595,9 +620,12 @@ export class DelegationService {
     const activeDelegation = await prisma.patientAccessDelegation.findFirst({
       where: {
         patientId: patient.id,
-        allottedDoctorId: docProfile.id,
         status: DelegationStatus.ACTIVE,
         expiresAt: { gt: now },
+        OR: [
+          ...(doctorProfileId ? [{ allottedDoctorId: doctorProfileId }] : []),
+          ...(hospitalProfileId ? [{ hospitalId: hospitalProfileId }] : []),
+        ],
       },
     });
 
@@ -611,8 +639,8 @@ export class DelegationService {
     // Audit log access
     await prisma.auditLog.create({
       data: {
-        userId: doctorUserId,
-        action: 'DOCTOR_VIEWED_PATIENT_FULL_DATA',
+        userId: providerUserId,
+        action: 'PROVIDER_VIEWED_PATIENT_FULL_DATA',
         resourceType: 'PATIENT_RECORD',
         resourceId: patient.id,
         eventDetails: {
@@ -621,6 +649,22 @@ export class DelegationService {
         },
       },
     });
+
+    // Sanitize BigInt fields for JSON serialization
+    const sanitizedMedicalRecords = (patient.medicalRecords || []).map((r: any) => ({
+      ...r,
+      fileSizeBytes: r.fileSizeBytes != null ? r.fileSizeBytes.toString() : '0',
+    }));
+
+    const sanitizedTimelineEvents = (patient.timelineEvents || []).map((t: any) => ({
+      ...t,
+      record: t.record
+        ? {
+            ...t.record,
+            fileSizeBytes: t.record.fileSizeBytes != null ? t.record.fileSizeBytes.toString() : '0',
+          }
+        : null,
+    }));
 
     return {
       delegation: {
@@ -635,8 +679,8 @@ export class DelegationService {
         phone: patient.phone,
         profile: patient.patientProfile,
       },
-      medicalRecords: patient.medicalRecords,
-      timelineEvents: patient.timelineEvents,
+      medicalRecords: sanitizedMedicalRecords,
+      timelineEvents: sanitizedTimelineEvents,
       todoItems: patient.todoItems,
       homeSupplies: patient.homeSupplies,
       feelingLogs: patient.feelingLogs,

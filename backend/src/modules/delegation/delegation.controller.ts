@@ -114,7 +114,8 @@ export class DelegationController {
     try {
       const result = await DelegationService.getAuthorizedPatientFullData(
         req.user!.userId,
-        req.params.patientId
+        req.params.patientId,
+        req.user!.role
       );
       res.status(200).json({ success: true, data: result });
     } catch (error) {
