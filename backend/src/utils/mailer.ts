@@ -185,13 +185,16 @@ class MailerService {
             user,
             pass,
           },
+          connectionTimeout: 5000,
+          greetingTimeout: 5000,
+          socketTimeout: 5000,
         });
         this.isConfigured = true;
         logger.info(`[MAILER] SMTP Mailer initialized for ${user} via ${env.SMTP_HOST || 'smtp.gmail.com'}:${port} (secure: ${secure})`);
 
         this.transporter.verify((error) => {
           if (error) {
-            logger.error(`[MAILER] SMTP connection verification failed for ${user}: ${error.message}`);
+            logger.warn(`[MAILER] Direct SMTP port connection failed (common on Render Free Tier where ports 465/587 are blocked): ${error.message}`);
           } else {
             logger.info(`[MAILER] SMTP connection verified successfully! Ready to deliver emails.`);
           }
@@ -207,27 +210,37 @@ class MailerService {
   /**
    * Diagnostic verification helper for health check endpoint
    */
-  async verifyConnection(): Promise<{ ok: boolean; message: string; host?: string; user?: string }> {
+  async verifyConnection(): Promise<{ ok: boolean; message: string; activeTransport: string; details?: any }> {
+    if (env.RESEND_API_KEY) {
+      return { ok: true, message: 'Resend HTTP API configured (HTTPS Port 443, Render compatible)', activeTransport: 'RESEND_API' };
+    }
+    if (env.BREVO_API_KEY) {
+      return { ok: true, message: 'Brevo HTTP API configured (HTTPS Port 443, Render compatible)', activeTransport: 'BREVO_API' };
+    }
+    if (env.GMAIL_RELAY_URL) {
+      return { ok: true, message: 'Google Apps Script HTTPS Relay configured (HTTPS Port 443, Render compatible)', activeTransport: 'GMAIL_RELAY' };
+    }
     if (!this.isConfigured || !this.transporter) {
       return {
         ok: false,
-        message: 'SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS in environment variables.',
+        message: 'No email service configured. Please set SMTP_USER & SMTP_PASS, or an HTTP email relay (RESEND_API_KEY / BREVO_API_KEY).',
+        activeTransport: 'NONE',
       };
     }
     try {
       await this.transporter.verify();
       return {
         ok: true,
-        message: 'SMTP connection verified successfully with mail server.',
-        host: env.SMTP_HOST || 'smtp.gmail.com',
-        user: env.SMTP_USER,
+        message: 'Direct SMTP connection verified successfully with mail server.',
+        activeTransport: 'SMTP',
+        details: { host: env.SMTP_HOST || 'smtp.gmail.com', user: env.SMTP_USER },
       };
     } catch (err: any) {
       return {
         ok: false,
-        message: err?.message || 'SMTP connection verification failed',
-        host: env.SMTP_HOST || 'smtp.gmail.com',
-        user: env.SMTP_USER,
+        message: `SMTP verification failed (${err?.message}). Note: Render free tier blocks outbound ports 25, 465, and 587. Consider using RESEND_API_KEY or BREVO_API_KEY.`,
+        activeTransport: 'SMTP',
+        details: { error: err?.message },
       };
     }
   }
@@ -236,25 +249,19 @@ class MailerService {
    * Diagnostic helper to test email delivery
    */
   async sendTestEmail(to: string): Promise<{ ok: boolean; message: string }> {
-    if (!this.isConfigured || !this.transporter) {
-      return {
-        ok: false,
-        message: 'SMTP transporter is not configured. Set SMTP_USER and SMTP_PASS in your environment.',
-      };
-    }
     const html = renderBaseLayout({
-      headerTagline: 'SMTP Delivery Diagnostic',
+      headerTagline: 'Delivery Diagnostic',
       badgeText: 'Diagnostic Test',
-      heading: 'SMTP Mailer Verified',
+      heading: 'MediLocker Email Operational',
       bodyHtml: `
-        <p>This is an automated diagnostic test confirming that your <strong>MediLocker SMTP Email Service</strong> is functioning correctly!</p>
-        <p style="margin-top:12px;">Automated clinical notifications, welcome emails, and OTP passcodes are now fully operational in production.</p>
+        <p>This is an automated diagnostic test confirming that your <strong>MediLocker Email Notification Service</strong> is operational!</p>
+        <p style="margin-top:12px;">Automated clinical notifications, welcome emails, and OTP passcodes are active in production.</p>
       `,
       ctaText: 'Visit MediLocker Portal',
       ctaUrl: 'https://medi-locker-sih.vercel.app',
     });
 
-    const dispatched = await this.dispatch(to, '[MediLocker] SMTP Diagnostic Test Email', html);
+    const dispatched = await this.dispatch(to, '[MediLocker] Diagnostic Test Email', html);
     if (dispatched) {
       return { ok: true, message: `Test email successfully dispatched to ${to}` };
     }
@@ -262,6 +269,80 @@ class MailerService {
   }
 
   private async dispatch(to: string, subject: string, html: string): Promise<boolean> {
+    // 1. If GMAIL_RELAY_URL is provided, send via Google Apps Script HTTPS Relay (Port 443 - works everywhere)
+    if (env.GMAIL_RELAY_URL) {
+      try {
+        const res = await fetch(env.GMAIL_RELAY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, subject, html }),
+        });
+        if (res.ok) {
+          logger.info(`[GMAIL RELAY] Email dispatched to ${to} | Subject: "${subject}"`);
+          return true;
+        }
+      } catch (err: any) {
+        logger.warn('[GMAIL RELAY] Relay failed, trying next provider:', err?.message);
+      }
+    }
+
+    // 2. If RESEND_API_KEY is provided, send via Resend HTTPS API (Port 443)
+    if (env.RESEND_API_KEY) {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.RESEND_API_KEY.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: env.RESEND_FROM || 'MediLocker <onboarding@resend.dev>',
+            to: [to],
+            subject,
+            html,
+          }),
+        });
+        if (res.ok) {
+          logger.info(`[RESEND API] Email dispatched to ${to} | Subject: "${subject}"`);
+          return true;
+        } else {
+          const errText = await res.text();
+          logger.warn('[RESEND API] Resend returned error:', errText);
+        }
+      } catch (err: any) {
+        logger.warn('[RESEND API] Resend dispatch failed:', err?.message);
+      }
+    }
+
+    // 3. If BREVO_API_KEY is provided, send via Brevo HTTPS API (Port 443)
+    if (env.BREVO_API_KEY) {
+      try {
+        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': env.BREVO_API_KEY.trim(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'MediLocker Health', email: env.SMTP_USER || 'sentridibesh6@gmail.com' },
+            to: [{ email: to }],
+            subject,
+            htmlContent: html,
+          }),
+        });
+        if (res.ok) {
+          logger.info(`[BREVO API] Email dispatched to ${to} | Subject: "${subject}"`);
+          return true;
+        } else {
+          const errText = await res.text();
+          logger.warn('[BREVO API] Brevo returned error:', errText);
+        }
+      } catch (err: any) {
+        logger.warn('[BREVO API] Brevo dispatch failed:', err?.message);
+      }
+    }
+
+    // 4. Standard SMTP Transporter (Port 465 / 587)
     if (!this.isConfigured || !this.transporter) {
       logger.info(`[MAILER DEV MOCK] "${subject}" would be dispatched to ${to}`);
       return true;

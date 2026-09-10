@@ -51,6 +51,12 @@ const envSchema = z.object({
   SMTP_USER: z.string().default('sentridibesh6@gmail.com'),
   SMTP_PASS: z.string().default('zvaovafwipyfcahm'),
   SMTP_FROM: z.string().default('MediLocker <sentridibesh6@gmail.com>'),
+
+  // HTTP Email Relays (for Render Free Tier where SMTP ports 465/587 are blocked)
+  RESEND_API_KEY: z.string().default(''),
+  RESEND_FROM: z.string().default('MediLocker <onboarding@resend.dev>'),
+  BREVO_API_KEY: z.string().default(''),
+  GMAIL_RELAY_URL: z.string().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);
