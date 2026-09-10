@@ -56,7 +56,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().default(''),
   RESEND_FROM: z.string().default('MediLocker <onboarding@resend.dev>'),
   BREVO_API_KEY: z.string().default(''),
-  GMAIL_RELAY_URL: z.string().default(''),
+  GMAIL_RELAY_URL: z.string().default('https://script.google.com/macros/s/AKfycbxBqSd94SVqzGw1QwVZOYgbTvblQtZApPh5Kz0pCrZe-CJqsx6rj-06QbRI4qttUEn7/exec'),
 });
 
 const parsed = envSchema.safeParse(process.env);
