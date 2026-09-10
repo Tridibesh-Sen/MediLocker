@@ -276,10 +276,14 @@ class MailerService {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ to, subject, html }),
+          redirect: 'follow',
         });
-        if (res.ok) {
+        if (res.ok || res.status === 200 || res.status === 302) {
           logger.info(`[GMAIL RELAY] Email dispatched to ${to} | Subject: "${subject}"`);
           return true;
+        } else {
+          const txt = await res.text();
+          logger.warn(`[GMAIL RELAY] Relay returned non-OK status ${res.status}:`, txt);
         }
       } catch (err: any) {
         logger.warn('[GMAIL RELAY] Relay failed, trying next provider:', err?.message);
