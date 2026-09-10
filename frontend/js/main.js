@@ -2367,7 +2367,7 @@
     async function loadDoctorAppointments() {
       if (!todayList) return;
       try {
-        const res = await fetch(apiUrl('/api/v1/appointments/my'), {
+        const res = await fetch(apiUrl('/api/v1/appointments/my-appointments'), {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) return;
