@@ -41,7 +41,10 @@
       </div>
       <nav class="side-nav">
         <a class="active" href="doctor.html">⌂ <span>Overview</span></a>
-        <a href="#patientSearch">▦ <span>Search patient</span></a>
+        <a href="#doctorAppointmentsSection">📅 <span>Appointments & Visits</span></a>
+        <a href="#patientSearch">▦ <span>Search Patient</span></a>
+        <a href="#pendingVerificationSection">⏳ <span>Pending Verifications</span></a>
+        <a href="#activePatientsSection">👥 <span>Active Sessions</span></a>
       </nav>
       <div class="side-bottom">
         <a href="login.html?role=doctor">↪ <span>Switch portal</span></a>
@@ -68,11 +71,13 @@
           <strong>01</strong>
           <span>Active doctor session</span>
         </div>
+      </section>
+
       <!-- Doctor Appointments & Clinical To-Do Section -->
       <section class="profile-card" id="doctorAppointmentsSection" style="margin-top:30px;border-top:4px solid #6366f1;">
-        <div class="card-topline">
+        <div class="card-topline" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           <span>APPOINTMENTS & CLINICAL TO-DO</span>
-          <span class="live-dot" style="background:#6366f1;">📅 Real-Time Patient Visits</span>
+          <span class="status-pill" style="background:#e0e7ff;color:#4338ca;font-size:12px;font-weight:700;margin:0;">📅 Real-Time Patient Visits</span>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 20px;flex-wrap:wrap;gap:12px;">
@@ -166,9 +171,9 @@
 
       <!-- Pending Verification Section (Retained across re-login for 15 minutes) -->
       <section class="profile-card" id="pendingVerificationSection" style="margin-top:30px;border-top:4px solid var(--plum);">
-        <div class="card-topline">
+        <div class="card-topline" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           <span>PENDING VERIFICATION</span>
-          <span class="live-dot" style="background:#e39824;">⏳ 15-Minute Dynamic Passcode Window</span>
+          <span class="status-pill" style="background:#fef3c7;color:#b45309;font-size:12px;font-weight:700;margin:0;">⏳ 15-Minute Dynamic Passcode Window</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 16px;flex-wrap:wrap;gap:8px;">
           <div>
@@ -186,9 +191,9 @@
 
       <!-- Active Authorized Patients Section -->
       <section class="profile-card" id="activePatientsSection" style="margin-top:30px;">
-        <div class="card-topline">
+        <div class="card-topline" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           <span>ACTIVE SESSIONS</span>
-          <span class="live-dot">● Sovereign Patient Consent</span>
+          <span class="status-pill" style="background:#ecfdf5;color:#047857;font-size:12px;font-weight:700;margin:0;">● Sovereign Patient Consent</span>
         </div>
         <h3 style="font:800 24px 'Manrope';margin:10px 0 16px;">Currently Authorized Patients</h3>
         <div id="activePatientsList">

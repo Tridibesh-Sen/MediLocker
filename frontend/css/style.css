@@ -1111,5 +1111,156 @@ input, select, textarea, button {
   }
 }
 
+/* ==========================================================================
+   Desktop & Large Screen UI Enhancements (>= 1001px)
+   ========================================================================== */
+@media (min-width: 1001px) {
+  .app-layout {
+    display: grid !important;
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+    min-height: calc(100vh - 92px) !important;
+    width: 100% !important;
+    align-items: start !important;
+  }
+
+  .sidebar {
+    display: flex !important;
+    position: sticky !important;
+    top: 92px !important;
+    height: calc(100vh - 92px) !important;
+    overflow-y: auto !important;
+    background: #f4edf5 !important;
+    border-right: 1px solid var(--line) !important;
+    padding: 32px 20px !important;
+    z-index: 10 !important;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    width: 5px;
+  }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: #d8cddc;
+    border-radius: 999px;
+  }
+
+  .app-main {
+    padding: 44px 4% 100px !important;
+    max-width: 1560px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
+  .provider-hero {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 32px !important;
+    padding: 38px 44px !important;
+    border-radius: 28px !important;
+    margin: 16px 0 32px !important;
+    background: linear-gradient(135deg, #2b1c33 0%, #462c53 50%, #63476d 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 16px 40px rgba(43, 28, 51, 0.15) !important;
+  }
+
+  .provider-hero h2 {
+    color: #ffffff !important;
+    font-size: 34px !important;
+    line-height: 1.15 !important;
+    letter-spacing: -1px !important;
+    margin: 8px 0 10px !important;
+  }
+
+  .provider-hero p {
+    color: #d6ccdc !important;
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    max-width: 680px !important;
+    margin: 0 !important;
+  }
+
+  .provider-stat {
+    border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-top: 0 !important;
+    padding-left: 32px !important;
+    padding-top: 0 !important;
+    width: auto !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .provider-stat strong {
+    font-size: 52px !important;
+    line-height: 1 !important;
+    color: #ffffff !important;
+  }
+
+  .provider-stat span {
+    color: #d6ccdc !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    margin-top: 6px !important;
+  }
+
+  .profile-card,
+  .upload-card {
+    background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 26px !important;
+    padding: 34px 38px !important;
+    box-shadow: 0 10px 35px rgba(43, 32, 58, 0.05) !important;
+    margin-bottom: 30px !important;
+    color: var(--ink) !important;
+  }
+
+  .profile-card h2,
+  .profile-card h3,
+  .profile-card h4 {
+    color: var(--plum) !important;
+  }
+
+  .card-topline {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 12px !important;
+    letter-spacing: 1.5px !important;
+    font-weight: 800 !important;
+    color: var(--muted) !important;
+    margin-bottom: 12px !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 20px !important;
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 20px !important;
+  }
+
+  .details-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px !important;
+  }
+}
+
+/* Ultra-wide Displays (>= 1600px) */
+@media (min-width: 1600px) {
+  .app-layout {
+    grid-template-columns: 310px minmax(0, 1fr) !important;
+  }
+  .app-main {
+    padding: 50px 5% 120px !important;
+    max-width: 1700px !important;
+  }
+  .page-title h1 {
+    font-size: 58px !important;
+  }
+}
+
 
 
