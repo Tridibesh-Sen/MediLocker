@@ -78,12 +78,30 @@ MediLocker operates with **zero mock data and zero artificial fallbacks**: every
 - **Vital Signs Monitoring**: Track Blood Pressure (Sys/Dia), Fasting Glucose, HbA1c, Heart Rate, and Blood Oxygen (SpO2).
 - **Clinical Alert Thresholds**: Automatic classification into **Normal**, **Elevated**, or **Alert** with visual indicators.
 
-### 10. 🏥 Dedicated Healthcare Provider Portals
+### 10. 🩺 Doctor Discovery & Clinic Appointment Booking
+- **Smart Directory Filtering**: Patients can search and filter verified physicians:
+  - **All Doctors**: Browse all empanelled specialists with experience, degree (MBBS/MD), and clinic addresses.
+  - **Previously Visited**: Auto-detects doctors who previously treated the patient or reviewed their records.
+  - **Nearby Clinics**: Proximity matching comparing doctor clinic locations with patient residence.
+- **Interactive Booking Engine**: Select appointment dates, time slots (Morning, Afternoon, Evening), and clinical reasons.
+- **Doctor Workspace Queue & Pre-Consultation Checklist**:
+  - **Today's Appointments Queue**: Immediate patient consultation schedule.
+  - **Upcoming Appointments & Clinical To-Do**: Generates pre-consultation action items (review previous lab reports, verify vitals, prepare prescription).
+  - **Status Controls**: One-click status updates (`Confirm`, `Complete`, `Cancel`) with automated patient updates.
+
+### 11. ✉️ Automated Clinical Notification & Zero-Block HTTPS Email Relay
+- **Welcome & Unit ID Dispatch**: Sends formatted clinical credentials to newly registered patients and doctors.
+- **Dynamic 6-Digit OTP Consultations**: Dispatches expiring passcodes when doctors request emergency or clinic access.
+- **Appointment Status Alerts**: Instant notifications on booking requests and status changes.
+- **Adverse Symptom Warnings**: Automatic urgent alerts if a patient logs severe/critical wellness ratings.
+- **Zero-Block Delivery Architecture**: Built-in HTTPS Web App relay (`GMAIL_RELAY_URL`), Brevo API, Resend API, and SMTP support that bypasses cloud firewall port restrictions (Render Free Tier).
+
+### 12. 🏥 Dedicated Healthcare Provider Portals
 - **Doctor Portal**: Verifiable Medical Registration Numbers (NMC/DCI/State Council), patient Unit ID lookups, access requests, and historical record viewing.
 - **Hospital Portal**: Institutional staff allocations, inpatient coordination, and departmental auditing.
 - **Immutable Audit Logging**: Every access grant, record view, and search is logged in the `audit_logs` table with IP address, user agent, and timestamp.
 
-### 11. 🌐 Universal Accessibility & Multilingual Localization
+### 13. 🌐 Universal Accessibility & Multilingual Localization
 - Real-time client-side localization across 7 languages:
   - **English**, **বাংলা (Bengali)**, **हिन्दी (Hindi)**, **मराठी (Marathi)**, **اردو (Urdu - RTL)**, **ਪੰਜਾਬੀ (Punjabi)**, and **ಕನ್ನಡ (Kannada)**.
 
@@ -162,24 +180,34 @@ MediLocker/
 │   ├── ai-companion.html         # Clinical Medi-AI assistant with safety guardrails
 │   ├── delegation.html           # Doctor-patient consent requests & 6-digit OTP generator
 │   ├── tests.html                # Diagnostic lab findings & vitals tracker
+│   ├── doctors.html              # Doctor directory & appointment booking portal
 │   ├── profile.html              # Sovereign patient profile & emergency contact
-│   ├── doctor.html               # Verified doctor portal with patient lookup & OTP entry
+│   ├── doctor.html               # Verified doctor workspace with appointments & To-Do queue
 │   ├── hospital.html             # Institutional healthcare administration portal
 │   └── 404.html                  # Error fallback page
 │
 ├── backend/                      # Server application (TypeScript)
 │   ├── prisma/
-│   │   ├── schema.prisma         # Complete PostgreSQL relational schema
+│   │   ├── schema.prisma         # Complete PostgreSQL relational schema (appointments, records, users)
 │   │   └── supabase_schema.sql   # Direct SQL migration reference
 │   ├── src/
 │   │   ├── modules/
 │   │   │   ├── ai/               # Gemini AI OCR, batch reader, and clinical guardrails
+│   │   │   ├── appointments/     # Doctor booking, proximity filter, and status workflows
 │   │   │   ├── auth/             # Registration, deduplication, and login services
 │   │   │   ├── delegation/       # 6-digit OTP generation, verification, and revocation
 │   │   │   ├── inventory/        # Medicine cabinet, barcode GTIN, and refill tracking
-│   │   │   └── records/          # Document upload, storage, and timeline ingestion
+│   │   │   ├── records/          # Document upload, storage, and timeline ingestion
+│   │   │   ├── timeline/         # Chronological care events & feeling assessment
+│   │   │   └── todo/             # Daily medication checklists & midnight renewals
+│   │   ├── utils/
+│   │   │   ├── mailer.ts         # Automated email notification engine & HTTPS relays
+│   │   │   ├── cache.ts          # Upstash Redis & local in-memory dual cache layer
+│   │   │   └── storage.ts        # Cloudinary & Supabase storage adapters
+│   │   ├── workers/
+│   │   │   └── cronScheduler.ts  # Background refill & midnight routine worker
 │   │   ├── app.ts                # Express application configuration & middleware
-│   │   └── server.ts             # Server entrypoint & background cron scheduler
+│   │   └── server.ts             # Server entrypoint & HTTP listener
 │   ├── package.json
 │   └── tsconfig.json
 │
@@ -214,15 +242,40 @@ Create a `.env` file in `backend/.env`:
 ```env
 PORT=5000
 NODE_ENV=development
-DATABASE_URL="postgresql://postgres:[YOUR_PASSWORD]@db.[YOUR_PROJECT_ID].supabase.co:5432/postgres?sslmode=require"
-DIRECT_URL="postgresql://postgres:[YOUR_PASSWORD]@db.[YOUR_PROJECT_ID].supabase.co:5432/postgres?sslmode=require"
+
+# Database (Supabase PostgreSQL via IPv4 pooler)
+DATABASE_URL="postgresql://postgres.[REF]:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require"
+DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres"
+
+# Supabase (Storage & Platform)
 SUPABASE_URL="https://[YOUR_PROJECT_ID].supabase.co"
+SUPABASE_KEY="[YOUR_SUPABASE_SERVICE_ROLE_KEY]"
 SUPABASE_ANON_KEY="[YOUR_SUPABASE_ANON_KEY]"
-SUPABASE_SERVICE_ROLE_KEY="[YOUR_SUPABASE_SERVICE_ROLE_KEY]"
-SUPABASE_STORAGE_BUCKET="medical-records"
-JWT_SECRET="medilocker_super_secret_production_key_2026"
+SUPABASE_BUCKET="medical-records"
+
+# AI Inference (Gemini Vision & Mistral pool)
 GEMINI_API_KEY="[YOUR_GEMINI_API_KEY]"
-FRONTEND_URL="http://localhost:3000"
+MISTRAL_API_KEY="[YOUR_MISTRAL_API_KEY]"
+MISTRAL_API_KEY_2="[YOUR_MISTRAL_API_KEY_2]"
+
+# Security & Tokens
+JWT_SECRET="medilocker_super_secret_production_key_2026"
+JWT_EXPIRES_IN="2h"
+CRON_SECRET="medilocker-cron-secret-2026"
+CORS_ORIGIN="*"
+
+# Upstash Redis Cache Layer
+UPSTASH_REDIS_REST_URL="[YOUR_UPSTASH_URL]"
+UPSTASH_REDIS_REST_TOKEN="[YOUR_UPSTASH_TOKEN]"
+
+# Email Notifications (Google Apps Script HTTPS Relay or SMTP)
+GMAIL_RELAY_URL="https://script.google.com/macros/s/.../exec"
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER="[YOUR_EMAIL]@gmail.com"
+SMTP_PASS="[YOUR_16_CHAR_APP_PASSWORD]"
+SMTP_FROM="MediLocker <[YOUR_EMAIL]@gmail.com>"
 ```
 
 ### 4. Synchronize Database & Generate Prisma Client
@@ -239,6 +292,7 @@ npm run dev
 ```
 - 🌐 **Frontend UI**: [http://localhost:3000](http://localhost:3000)
 - 📡 **Backend Core API**: [http://localhost:5000/api/v1/health](http://localhost:5000/api/v1/health)
+- ✉️ **Email Diagnostic Health**: [http://localhost:5000/api/v1/health/email](http://localhost:5000/api/v1/health/email)
 
 ---
 
@@ -258,7 +312,7 @@ npm run dev
 ---
 
 ## 👥 Contributors & Acknowledgements
-Developed with ❤️ by **Tridibesh Sen** and the **MediLocker Engineering Team**. Designed in adherence to **Ayushman Bharat Digital Mission (ABDM)** principles.
+Developed with ❤️ by **Peak Constructors — Tridibesh Sen** and the **MediLocker Engineering Team**. Designed in adherence to **Ayushman Bharat Digital Mission (ABDM)** principles.
 
 ---
 
