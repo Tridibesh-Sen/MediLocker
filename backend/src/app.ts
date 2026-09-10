@@ -12,6 +12,7 @@ import { aiRoutes } from './modules/ai/ai.routes';
 import { delegationRoutes } from './modules/delegation/delegation.routes';
 import { appointmentRoutes } from './modules/appointments/appointments.routes';
 import { TodoService } from './modules/todo/todo.service';
+import { mailerService } from './utils/mailer';
 
 export const app = express();
 
@@ -73,6 +74,20 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get('/api/v1/health/email', async (req: Request, res: Response) => {
+  const status = await mailerService.verifyConnection();
+  res.status(status.ok ? 200 : 503).json(status);
+});
+
+app.post('/api/v1/auth/test-email', async (req: Request, res: Response) => {
+  const email = (req.body?.email || req.query?.email) as string;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ ok: false, message: 'Valid recipient email is required in JSON body: { "email": "user@domain.com" }' });
+  }
+  const result = await mailerService.sendTestEmail(email);
+  res.status(result.ok ? 200 : 500).json(result);
 });
 
 // Midnight Cron Webhook Trigger (for external services like cron-job.org or GitHub Actions)

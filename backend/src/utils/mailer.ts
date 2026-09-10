@@ -169,25 +169,96 @@ class MailerService {
   }
 
   private init() {
-    if (env.SMTP_USER && env.SMTP_PASS) {
+    const user = env.SMTP_USER?.trim();
+    const pass = env.SMTP_PASS ? env.SMTP_PASS.replace(/[\s"']/g, '') : '';
+
+    if (user && pass) {
       try {
+        const port = Number(env.SMTP_PORT) || 465;
+        const secure = port === 465 ? true : Boolean(env.SMTP_SECURE);
+
         this.transporter = nodemailer.createTransport({
           host: env.SMTP_HOST || 'smtp.gmail.com',
-          port: Number(env.SMTP_PORT) || 465,
-          secure: env.SMTP_SECURE !== false,
+          port,
+          secure,
           auth: {
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASS.replace(/\s+/g, ''),
+            user,
+            pass,
           },
         });
         this.isConfigured = true;
-        logger.info(`SMTP Mailer initialized successfully for ${env.SMTP_USER}`);
+        logger.info(`[MAILER] SMTP Mailer initialized for ${user} via ${env.SMTP_HOST || 'smtp.gmail.com'}:${port} (secure: ${secure})`);
+
+        this.transporter.verify((error) => {
+          if (error) {
+            logger.error(`[MAILER] SMTP connection verification failed for ${user}: ${error.message}`);
+          } else {
+            logger.info(`[MAILER] SMTP connection verified successfully! Ready to deliver emails.`);
+          }
+        });
       } catch (err: any) {
-        logger.warn('Failed to initialize SMTP transporter:', err?.message);
+        logger.warn('[MAILER] Failed to initialize SMTP transporter:', err?.message);
       }
     } else {
-      logger.info('SMTP credentials not provided in environment. Mailer will operate in simulated dev mode.');
+      logger.info('[MAILER] SMTP credentials not provided in environment. Mailer will operate in simulated dev mode.');
     }
+  }
+
+  /**
+   * Diagnostic verification helper for health check endpoint
+   */
+  async verifyConnection(): Promise<{ ok: boolean; message: string; host?: string; user?: string }> {
+    if (!this.isConfigured || !this.transporter) {
+      return {
+        ok: false,
+        message: 'SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS in environment variables.',
+      };
+    }
+    try {
+      await this.transporter.verify();
+      return {
+        ok: true,
+        message: 'SMTP connection verified successfully with mail server.',
+        host: env.SMTP_HOST || 'smtp.gmail.com',
+        user: env.SMTP_USER,
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        message: err?.message || 'SMTP connection verification failed',
+        host: env.SMTP_HOST || 'smtp.gmail.com',
+        user: env.SMTP_USER,
+      };
+    }
+  }
+
+  /**
+   * Diagnostic helper to test email delivery
+   */
+  async sendTestEmail(to: string): Promise<{ ok: boolean; message: string }> {
+    if (!this.isConfigured || !this.transporter) {
+      return {
+        ok: false,
+        message: 'SMTP transporter is not configured. Set SMTP_USER and SMTP_PASS in your environment.',
+      };
+    }
+    const html = renderBaseLayout({
+      headerTagline: 'SMTP Delivery Diagnostic',
+      badgeText: 'Diagnostic Test',
+      heading: 'SMTP Mailer Verified',
+      bodyHtml: `
+        <p>This is an automated diagnostic test confirming that your <strong>MediLocker SMTP Email Service</strong> is functioning correctly!</p>
+        <p style="margin-top:12px;">Automated clinical notifications, welcome emails, and OTP passcodes are now fully operational in production.</p>
+      `,
+      ctaText: 'Visit MediLocker Portal',
+      ctaUrl: 'https://medi-locker-sih.vercel.app',
+    });
+
+    const dispatched = await this.dispatch(to, '[MediLocker] SMTP Diagnostic Test Email', html);
+    if (dispatched) {
+      return { ok: true, message: `Test email successfully dispatched to ${to}` };
+    }
+    return { ok: false, message: `Failed to dispatch test email to ${to}. Check Render logs for details.` };
   }
 
   private async dispatch(to: string, subject: string, html: string): Promise<boolean> {

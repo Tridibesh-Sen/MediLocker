@@ -42,10 +42,15 @@ const envSchema = z.object({
   // Email (SMTP / Google App Password)
   SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().default(465),
-  SMTP_SECURE: z.coerce.boolean().default(true),
-  SMTP_USER: z.string().default('medilocker.noreply@gmail.com'),
-  SMTP_PASS: z.string().default('yzbt bfan jjha iaom'),
-  SMTP_FROM: z.string().default('MediLocker <medilocker.noreply@gmail.com>'),
+  SMTP_SECURE: z
+    .preprocess((val) => {
+      if (typeof val === 'string') return val.toLowerCase() === 'true' || val === '1';
+      return Boolean(val);
+    }, z.boolean())
+    .default(true),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  SMTP_FROM: z.string().default('MediLocker <noreply@medilocker.in>'),
 });
 
 const parsed = envSchema.safeParse(process.env);
