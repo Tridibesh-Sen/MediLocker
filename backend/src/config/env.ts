@@ -66,10 +66,29 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-if (parsed.data.SUPABASE_URL.includes('pnqubhvcvocytudlwbog')) {
-  parsed.data.SUPABASE_URL = 'https://mmgyamemhbecpytpibrr.supabase.co';
-  parsed.data.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NjQ4NDUsImV4cCI6MjEwNDU0MDg0NX0.zMTXIwY7bLX2R7odpSkY0YDMq8297tiJbANsFfBjwLk';
-  parsed.data.SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODk2NDg0NSwiZXhwIjoyMTA0NTQwODQ1fQ.yodOY_3vL0eOfvUdv-IWHK9ZLytyUT0-grh8P5uEcfY';
+const DEFAULT_SUPABASE_URL = 'https://mmgyamemhbecpytpibrr.supabase.co';
+const DEFAULT_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODk2NDg0NSwiZXhwIjoyMTA0NTQwODQ1fQ.yodOY_3vL0eOfvUdv-IWHK9ZLytyUT0-grh8P5uEcfY';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ3lhbWVtaGJlY3B5dHBpYnJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NjQ4NDUsImV4cCI6MjEwNDU0MDg0NX0.zMTXIwY7bLX2R7odpSkY0YDMq8297tiJbANsFfBjwLk';
+
+function isServiceRole(token?: string): boolean {
+  if (!token || typeof token !== 'string') return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return false;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    return payload && payload.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
+
+if (!isServiceRole(parsed.data.SUPABASE_KEY)) {
+  parsed.data.SUPABASE_KEY = DEFAULT_SUPABASE_SERVICE_ROLE_KEY;
+}
+
+if (!parsed.data.SUPABASE_URL || parsed.data.SUPABASE_URL.includes('pnqubhvcvocytudlwbog')) {
+  parsed.data.SUPABASE_URL = DEFAULT_SUPABASE_URL;
+  parsed.data.SUPABASE_ANON_KEY = DEFAULT_SUPABASE_ANON_KEY;
 }
 
 export const env = parsed.data;

@@ -65,19 +65,11 @@ export async function uploadMedicalDocument(
         }
       }
 
-      // Generate signed URL (valid for 7 days) or fallback to public URL
-      let fileUrl = '';
-      const { data: signedData, error: signedErr } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+      // Generate permanent public URL from Supabase storage
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+      const fileUrl = urlData?.publicUrl || `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${storagePath}`;
 
-      if (!signedErr && signedData?.signedUrl) {
-        fileUrl = signedData.signedUrl;
-      } else {
-        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-        fileUrl = urlData?.publicUrl || `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${storagePath}`;
-      }
-
+      logger.info(`Supabase storage upload successful: ${storagePath}`);
       return {
         url: fileUrl,
         storageKey: storagePath,
