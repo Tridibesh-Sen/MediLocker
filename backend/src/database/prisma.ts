@@ -10,9 +10,15 @@ declare global {
 const SUPABASE_IPV4_POOLER_DB = 'postgresql://postgres.mmgyamemhbecpytpibrr:qLBHDWUwaMod4Cd0@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require';
 
 const resolveDatabaseUrl = () => {
-  const current = process.env.DATABASE_URL;
+  let current = process.env.DATABASE_URL;
   if (!current || current.includes('pnqubhvcvocytudlwbog') || current.includes('ep-sample-neon') || current.includes('db.mmgyamemhbecpytpibrr.supabase.co')) {
-    return SUPABASE_IPV4_POOLER_DB;
+    current = SUPABASE_IPV4_POOLER_DB;
+  }
+  if (current.includes('pooler.supabase.com')) {
+    const separator = current.includes('?') ? '&' : '?';
+    if (!current.includes('connection_limit=')) {
+      current += `${separator}connection_limit=15&pool_timeout=20`;
+    }
   }
   return current;
 };

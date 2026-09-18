@@ -66,4 +66,51 @@ router.get(
   DelegationController.getPatientFullData
 );
 
+// Emergency QR & Unit ID Triage Lookup
+router.get(
+  '/emergency-lookup/:identifier',
+  DelegationController.emergencyLookup
+);
+router.post(
+  '/emergency-lookup',
+  DelegationController.emergencyLookup
+);
+
+// Hospital Doctor Organization Management
+router.get(
+  '/hospital/doctors',
+  authenticate,
+  requireRole(UserRole.HOSPITAL),
+  DelegationController.getHospitalDoctors
+);
+
+router.get(
+  '/hospital/search-doctors',
+  authenticate,
+  requireRole(UserRole.HOSPITAL),
+  DelegationController.searchDoctorsForHospital
+);
+
+router.post(
+  '/hospital/add-doctor',
+  authenticate,
+  requireRole(UserRole.HOSPITAL),
+  DelegationController.addDoctorToHospital
+);
+
+router.patch(
+  '/hospital/doctor/:doctorId',
+  authenticate,
+  requireRole(UserRole.HOSPITAL),
+  DelegationController.toggleHospitalDoctor
+);
+
+router.delete(
+  '/hospital/doctor/:doctorId',
+  authenticate,
+  requireRole(UserRole.HOSPITAL),
+  DelegationController.removeDoctorFromHospital
+);
+
 export const delegationRoutes = router;
+

@@ -99,4 +99,86 @@ export class AIController {
       next(error);
     }
   }
+
+  static async voiceIntake(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = req.body.input || req.body.transcript;
+      const { history, dialect, language, currentSocrates } = req.body;
+      if (!input || typeof input !== 'string') {
+        throw new AppError('Patient voice/text input is required (use "input" or "transcript").', 400);
+      }
+      const result = await AIService.conductVoiceIntake({
+        input,
+        history,
+        dialect,
+        language,
+        currentSocrates,
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async diseasePrediction(req: Request, res: Response, next: NextFunction) {
+    try {
+      const socrates = req.body.socrates || req.body.socratesData || req.body;
+      const { patientContext, language } = req.body;
+      if (!socrates || typeof socrates !== 'object') {
+        throw new AppError('SOCRATES clinical matrix is required (use "socrates" or "socratesData").', 400);
+      }
+      const result = await AIService.predictDiseasesAndTests({
+        socrates,
+        patientContext,
+        language,
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async doubleCode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const complaintOrDiagnosis = req.body.complaintOrDiagnosis || req.body.clinicalText || req.body.text;
+      const { language } = req.body;
+      if (!complaintOrDiagnosis || typeof complaintOrDiagnosis !== 'string') {
+        throw new AppError('Clinical complaint or diagnosis string is required.', 400);
+      }
+      const result = await AIService.doubleCodeDiagnosis({
+        complaintOrDiagnosis,
+        language,
+      });
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async clinicalTriage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const targetPatientId = req.params.patientId || req.user!.userId;
+      const result = await AIService.generateClinicalTriageSummary(targetPatientId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async saveIntake(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.userId;
+      const { socrates, predictedConditions, recommendedTests, patientExplanation } = req.body;
+      const result = await AIService.saveIntakeToVault(userId, {
+        socrates,
+        predictedConditions,
+        recommendedTests,
+        patientExplanation,
+      });
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+

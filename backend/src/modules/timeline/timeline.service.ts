@@ -5,59 +5,115 @@ import { cacheService } from '../../utils/cache';
 
 export class TimelineService {
   /**
-   * Get patient chronological timeline events (Accelerated with cache)
+   * Get patient chronological timeline events (Accelerated with SWR cache)
    */
   static async getPatientTimeline(patientUserId: string) {
     const cacheKey = `timeline:${patientUserId}`;
-    const cached = await cacheService.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
 
-    const events = await prisma.timelineEvent.findMany({
-      where: { patientId: patientUserId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        record: true,
-        prescribedMeds: true,
+    const { data } = await cacheService.fetchOrCompute(
+      cacheKey,
+      async () => {
+        const events = await prisma.timelineEvent.findMany({
+          where: { patientId: patientUserId },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            record: true,
+            prescribedMeds: true,
+          },
+        });
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const feelingLogs = await prisma.dailyFeelingLog.findMany({
+          where: { patientId: patientUserId },
+          orderBy: { logDate: 'desc' },
+          take: 30,
+        });
+
+        const todayFeeling = feelingLogs.find((f) => {
+          const lDate = new Date(f.logDate);
+          return lDate >= today && lDate < tomorrow;
+        });
+
+        return {
+          timeline: events.map((e) => ({
+            id: e.id,
+            eventDateDdmmyyyy: e.eventDateDdmmyyyy,
+            doctorName: e.doctorName,
+            clinicName: e.clinicName,
+            diagnoses: e.diagnoses,
+            allergiesDetected: e.allergiesDetected,
+            clinicalTestsDue: e.clinicalTestsDue,
+            clinicalSummary: e.clinicalSummary,
+            prescribedMedications: e.prescribedMeds,
+            sourceDocument: {
+              id: e.record.id,
+              filename: e.record.originalFilename,
+              mimeType: e.record.mimeType,
+              documentType: e.record.documentType,
+            },
+          })),
+          symptomSynopsis: feelingLogs.map((f) => ({
+            date: f.logDate.toISOString().split('T')[0],
+            severityColor: f.severityColor, // GREEN, ORANGE, RED
+            feelingScore: f.feelingScore,
+            feedback: f.patientFeedback,
+          })),
+          todayFeelingSubmitted: Boolean(todayFeeling),
+          todayFeeling: todayFeeling ? {
+            id: todayFeeling.id,
+            feelingScore: todayFeeling.feelingScore,
+            severityColor: todayFeeling.severityColor,
+            feedback: todayFeeling.patientFeedback,
+            date: todayFeeling.logDate.toISOString().split('T')[0],
+          } : null,
+        };
       },
-    });
+      { ttlSeconds: 180, swrGraceSeconds: 60 }
+    );
 
-    const feelingLogs = await prisma.dailyFeelingLog.findMany({
+    return data;
+  }
+
+  /**
+   * Get patient recent feeling logs and today's status
+   */
+  static async getPatientFeelings(patientUserId: string, days = 14) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const logs = await prisma.dailyFeelingLog.findMany({
       where: { patientId: patientUserId },
       orderBy: { logDate: 'desc' },
-      take: 30,
+      take: Math.max(1, Math.min(days, 60)),
     });
 
-    const result = {
-      timeline: events.map((e) => ({
-        id: e.id,
-        eventDateDdmmyyyy: e.eventDateDdmmyyyy,
-        doctorName: e.doctorName,
-        clinicName: e.clinicName,
-        diagnoses: e.diagnoses,
-        allergiesDetected: e.allergiesDetected,
-        clinicalTestsDue: e.clinicalTestsDue,
-        clinicalSummary: e.clinicalSummary,
-        prescribedMedications: e.prescribedMeds,
-        sourceDocument: {
-          id: e.record.id,
-          filename: e.record.originalFilename,
-          mimeType: e.record.mimeType,
-          documentType: e.record.documentType,
-        },
-      })),
-      symptomSynopsis: feelingLogs.map((f) => ({
+    const todayFeeling = logs.find((f) => {
+      const lDate = new Date(f.logDate);
+      return lDate >= today && lDate < tomorrow;
+    });
+
+    return {
+      feelings: logs.map((f) => ({
         date: f.logDate.toISOString().split('T')[0],
-        severityColor: f.severityColor, // GREEN, ORANGE, RED
+        severityColor: f.severityColor,
         feelingScore: f.feelingScore,
         feedback: f.patientFeedback,
       })),
+      todayFeelingSubmitted: Boolean(todayFeeling),
+      todayFeeling: todayFeeling ? {
+        id: todayFeeling.id,
+        feelingScore: todayFeeling.feelingScore,
+        severityColor: todayFeeling.severityColor,
+        feedback: todayFeeling.patientFeedback,
+        date: todayFeeling.logDate.toISOString().split('T')[0],
+      } : null,
     };
-
-    cacheService.set(cacheKey, result, 300);
-
-    return result;
   }
 
   /**
@@ -109,8 +165,7 @@ export class TimelineService {
       });
     }
 
-    cacheService.del(`timeline:${userId}`);
-    cacheService.del(`records:${userId}`);
+    await cacheService.invalidateUserAll(userId);
 
     return { message: 'Timeline event deleted successfully.' };
   }

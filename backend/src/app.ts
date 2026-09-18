@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import helmet from 'helmet';
+import compression from 'compression';
 import path from 'path';
 import { env } from './config/env';
 import { errorHandler, AppError } from './middlewares/errorHandler';
@@ -20,6 +21,8 @@ import { mailerService } from './utils/mailer';
 };
 
 export const app = express();
+
+app.use(compression());
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -170,6 +173,9 @@ app.post('/api/v1/cron/midnight-renewal', async (req: Request, res: Response, ne
   }
 });
 
+import { abdmRoutes } from './modules/abdm/abdm.routes';
+import { kioskRoutes } from './modules/kiosk/kiosk.routes';
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/records', recordsRoutes);
 app.use('/api/v1/timeline', timelineRoutes);
@@ -178,6 +184,8 @@ app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/delegation', delegationRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
+app.use('/api/v1/abdm', abdmRoutes);
+app.use('/api/v1/kiosk', kioskRoutes);
 
 const frontendDir = path.resolve(__dirname, '../../frontend');
 app.use(express.static(frontendDir));

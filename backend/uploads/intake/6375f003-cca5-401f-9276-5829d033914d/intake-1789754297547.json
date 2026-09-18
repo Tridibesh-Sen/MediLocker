@@ -1,0 +1,55 @@
+{
+  "socrates": {
+    "site": "লুম্বার স্পাইন (Lower back)",
+    "onset": "sudden (while lifting something)",
+    "character": "sharp stab",
+    "radiation": null,
+    "associations": [],
+    "timeCourse": null,
+    "exacerbatingRelieving": null,
+    "severity": 2
+  },
+  "predictedConditions": [
+    {
+      "conditionName": "Lumbar Strain (Muscular or Ligamentous Injury)",
+      "probability": "High",
+      "scientificRationale": "Sudden onset of sharp stabbing pain in the lower back while lifting, with no radiation or associated symptoms, strongly suggests a mechanical injury to lumbar musculature or ligaments. This is consistent with acute lumbar strain, a common cause of lower back pain without systemic or neurological involvement.",
+      "icdCode": "M54.5"
+    },
+    {
+      "conditionName": "Lumbar Disc Herniation (Acute)",
+      "probability": "Moderate",
+      "scientificRationale": "While the patient lacks radiation or neurological symptoms, the sudden onset of sharp pain during lifting could indicate a disc herniation. However, this is less likely without radicular pain (e.g., sciatica) or neurological deficits. Still, it remains a plausible differential given the mechanism of injury.",
+      "icdCode": "M51.2"
+    },
+    {
+      "conditionName": "Lumbar Sprain (Ligamentous Injury)",
+      "probability": "Moderate",
+      "scientificRationale": "Similar to lumbar strain but involving ligamentous injury, often occurring during sudden movements or lifting. The absence of radiation or systemic symptoms supports this as a secondary consideration alongside muscular strain.",
+      "icdCode": "S33.11"
+    }
+  ],
+  "recommendedTests": [
+    {
+      "testName": "Lumbar Spine X-Ray",
+      "urgency": "Routine",
+      "clinicalReason": "To rule out fractures, dislocations, or bony abnormalities that could explain the sudden onset of pain."
+    },
+    {
+      "testName": "MRI of Lumbar Spine (if symptoms persist or worsen)",
+      "urgency": "Routine (if needed)",
+      "clinicalReason": "To assess for disc herniation, spinal stenosis, or other soft tissue abnormalities if initial conservative management fails."
+    },
+    {
+      "testName": "Clinical Assessment for Neurological Deficits (e.g., Straight Leg Raise Test)",
+      "urgency": "Routine",
+      "clinicalReason": "To evaluate for radiculopathy or cauda equina syndrome, which would warrant urgent intervention."
+    },
+    {
+      "testName": "Basic Blood Work (CBC, ESR, CRP)",
+      "urgency": "Routine",
+      "clinicalReason": "To rule out systemic inflammatory or infectious processes contributing to the pain."
+    }
+  ],
+  "patientExplanation": "Your sudden lower back pain while lifting is likely due to a minor strain or pull in your muscles or ligaments. This is very common and usually gets better with rest, gentle movement, and over-the-counter pain relievers. Most people feel much better within a few days to a couple of weeks. Avoid heavy lifting or strenuous activities until the pain improves. If the pain spreads down your legs, causes weakness, or you experience any bladder or bowel issues, seek medical attention immediately. Otherwise, focus on gentle stretching, heat therapy, and gradual return to normal activities. If symptoms persist beyond a few weeks or worsen, follow up with your healthcare provider for further evaluation."
+}

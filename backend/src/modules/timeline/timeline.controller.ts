@@ -11,6 +11,16 @@ export class TimelineController {
     }
   }
 
+  static async getFeelings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const days = req.query.days ? parseInt(String(req.query.days), 10) : 14;
+      const result = await TimelineService.getPatientFeelings(req.user!.userId, days);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getEventById(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await TimelineService.getTimelineEventById(req.params.id, req.user!.userId);

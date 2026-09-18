@@ -90,44 +90,89 @@
         <span id="aiContextCabinet" style="background:var(--peach);color:#6b472e;font-weight:700;padding:4px 10px;border-radius:999px;">🏠 Cabinet: 0 items</span>
       </div>
 
-      <!-- Chat Container -->
-      <div class="chat-container">
-        <div class="chat-header">
-          <div class="chat-header-info">
-            <div class="chat-ai-avatar">✦</div>
-            <div>
-              <strong style="font:800 17px 'Manrope';display:block;">Medi-AI Companion</strong>
-              <small style="color:var(--muted);font-size:12px;">Powered by Gemini 2.0 Clinical Guardrails · Safe OTC Guidance</small>
+      <!-- Feature Selector Tabs -->
+      <div class="companion-tabs-nav" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button type="button" class="tab-btn active" id="tabVoiceIntakeBtn" onclick="switchCompanionTab('voice')">
+          🎙 Voice & Text Intake (SOCRATES + Disease Prediction)
+        </button>
+        <button type="button" class="tab-btn" id="tabCodingBtn" onclick="switchCompanionTab('coding')">
+          🏷 NAMASTE & ICD-11 TM2 Double-Coding
+        </button>
+        <button type="button" class="tab-btn" id="tabChatBtn" onclick="switchCompanionTab('chat')">
+          ✦ General Medi-AI Chat
+        </button>
+      </div>
+
+      <!-- Tab 1: Voice & Text Intake Container -->
+      <div id="companionVoiceSection">
+        <div id="voiceIntakeContainer"></div>
+      </div>
+
+      <!-- Tab 2: Double-Coding Section -->
+      <div id="companionCodingSection" class="hidden">
+        <div id="codingEngineContainer"></div>
+      </div>
+
+      <!-- Tab 3: Chat Container -->
+      <div id="companionChatSection" class="hidden">
+        <div class="chat-container">
+          <div class="chat-header">
+            <div class="chat-header-info">
+              <div class="chat-ai-avatar">✦</div>
+              <div>
+                <strong style="font:800 17px 'Manrope';display:block;">Medi-AI Companion</strong>
+                <small style="color:var(--muted);font-size:12px;">Powered by Mistral AI Clinical Guardrails · Safe OTC Guidance</small>
+              </div>
+            </div>
+            <button type="button" class="view-btn" id="clearChatBtn" style="font-size:13px;padding:6px 12px;">Clear History</button>
+          </div>
+
+          <!-- Chat Message Area -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble ai">
+              <strong>Hello! I am your Medi-AI Health Companion.</strong><br>
+              I can help explain your medical reports, cross-check drug interactions, suggest safe remedies from your household medicine cabinet, or clarify prescription instructions.<br><br>
+              <small style="color:var(--muted);">*Medi-AI provides informational guidance under strict clinical guardrails and does not replace emergency medical diagnosis.</small>
             </div>
           </div>
-          <button type="button" class="view-btn" id="clearChatBtn" style="font-size:13px;padding:6px 12px;">Clear History</button>
-        </div>
 
-        <!-- Chat Message Area -->
-        <div class="chat-messages" id="chatMessages">
-          <div class="chat-bubble ai">
-            <strong>Hello! I am your Medi-AI Health Companion.</strong><br>
-            I can help explain your medical reports, cross-check drug interactions, suggest safe remedies from your household medicine cabinet, or clarify prescription instructions.<br><br>
-            <small style="color:var(--muted);">*Medi-AI provides informational guidance under strict clinical guardrails and does not replace emergency medical diagnosis.</small>
+          <!-- Quick Prompt Chips -->
+          <div class="chat-chips" id="quickPromptChips">
+            <button type="button" class="chat-chip" data-prompt="I have a mild headache and fever since morning. What should I do?">🤒 Mild headache & fever</button>
+            <button type="button" class="chat-chip" data-prompt="Can I take Paracetamol with my current active prescription?">💊 Check drug interaction</button>
+            <button type="button" class="chat-chip" data-prompt="Explain my lipid profile test results from August 2026.">🔬 Explain lab test results</button>
+            <button type="button" class="chat-chip" data-prompt="What safe medicines do I have in my cabinet for acidity?">🏠 Suggest home remedy for acidity</button>
           </div>
-        </div>
 
-        <!-- Quick Prompt Chips -->
-        <div class="chat-chips" id="quickPromptChips">
-          <button type="button" class="chat-chip" data-prompt="I have a mild headache and fever since morning. What should I do?">🤒 Mild headache & fever</button>
-          <button type="button" class="chat-chip" data-prompt="Can I take Paracetamol with my current active prescription?">💊 Check drug interaction</button>
-          <button type="button" class="chat-chip" data-prompt="Explain my lipid profile test results from August 2026.">🔬 Explain lab test results</button>
-          <button type="button" class="chat-chip" data-prompt="What safe medicines do I have in my cabinet for acidity?">🏠 Suggest home remedy for acidity</button>
+          <!-- Input Bar -->
+          <form class="chat-input-bar" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Describe your symptoms or ask a health question..." autocomplete="off" required>
+            <button type="submit" class="primary-btn" style="padding:12px 24px;">Send ↗</button>
+          </form>
         </div>
-
-        <!-- Input Bar -->
-        <form class="chat-input-bar" id="chatForm">
-          <input type="text" id="chatInput" placeholder="Describe your symptoms or ask a health question..." autocomplete="off" required>
-          <button type="submit" class="primary-btn" style="padding:12px 24px;">Send ↗</button>
-        </form>
       </div>
     </main>
   </div>
+
+  <script>
+    function switchCompanionTab(tab) {
+      document.querySelectorAll('.companion-tabs-nav .tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('companionVoiceSection').classList.add('hidden');
+      document.getElementById('companionCodingSection').classList.add('hidden');
+      document.getElementById('companionChatSection').classList.add('hidden');
+
+      if (tab === 'voice') {
+        document.getElementById('tabVoiceIntakeBtn').classList.add('active');
+        document.getElementById('companionVoiceSection').classList.remove('hidden');
+      } else if (tab === 'coding') {
+        document.getElementById('tabCodingBtn').classList.add('active');
+        document.getElementById('companionCodingSection').classList.remove('hidden');
+      } else {
+        document.getElementById('tabChatBtn').classList.add('active');
+        document.getElementById('companionChatSection').classList.remove('hidden');
+      }
+    }
+  </script>
 
   <!-- Mobile SaaS Bottom Navigation -->
   <nav class="mobile-bottom-nav">
@@ -142,6 +187,7 @@
   </nav>
 
   <script src="js/i18n.js"></script>
+  <script type="module" src="js/app.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
