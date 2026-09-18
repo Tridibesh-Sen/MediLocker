@@ -244,7 +244,7 @@ export function Companion() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+      <div className="companion-grid">
         {/* Chat & Audio Intake Window */}
         <div
           style={{

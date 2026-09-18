@@ -462,7 +462,7 @@ export function Kiosk() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div className="kiosk-grid">
           {/* Section 1: Anatomical SVG Body Map */}
           <section
             style={{
@@ -682,7 +682,7 @@ export function Kiosk() {
               </div>
 
               {/* Symptom Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
+              <div className="kiosk-symptom-grid">
                 {[
                   { id: 'Fever / Burning Heat', emoji: '🌡️', title: 'Fever', sub: 'बुखार / जलन' },
                   { id: 'Severe Sharp Pain', emoji: '⚡', title: 'Sharp Pain', sub: 'तेज दर्द' },

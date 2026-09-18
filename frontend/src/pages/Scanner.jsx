@@ -303,7 +303,7 @@ Accessed At: ${new Date(patientData.accessedAt || Date.now()).toLocaleString()}`
 
       {/* Main Container */}
       {!patientData ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.2fr) minmax(280px, 0.8fr)', gap: '28px', marginBottom: '40px' }}>
+        <div className="scanner-main-grid">
           {/* Scanner Viewfinder / Input Box */}
           <div
             style={{

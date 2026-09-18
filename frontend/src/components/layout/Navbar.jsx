@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
-export function Navbar({ isApp = true }) {
+export function Navbar({ isApp = true, onToggleMobileMenu = () => {}, isMobileMenuOpen = false }) {
   const { user, isAuthenticated, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
@@ -112,9 +112,23 @@ export function Navbar({ isApp = true }) {
 
   return (
     <header className={isApp ? 'app-header' : 'site-header'}>
-      <Link to={isAuthenticated ? '/dashboard' : '/'} className="brand" aria-label="MediLocker Home">
-        <img src="/logo-horizontal.png" alt="MediLocker" className="brand-logo" height="46" />
-      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        {isApp && (
+          <button
+            type="button"
+            className="mobile-menu-btn"
+            onClick={onToggleMobileMenu}
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            title="Toggle Navigation Menu"
+          >
+            <span className="hamburger-icon">{isMobileMenuOpen ? '✕' : '☰'}</span>
+          </button>
+        )}
+
+        <Link to={isAuthenticated ? '/dashboard' : '/'} className="brand" aria-label="MediLocker Home">
+          <img src="/logo-horizontal.png" alt="MediLocker" className="brand-logo" height="42" />
+        </Link>
+      </div>
 
       {!isApp && (
         <nav className="nav-links">
@@ -125,7 +139,7 @@ export function Navbar({ isApp = true }) {
 
       <div
         className={isApp ? 'app-header-right' : 'header-actions'}
-        style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '10px' }}
+        style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '8px' }}
       >
         <a
           href="tel:102"
@@ -136,7 +150,7 @@ export function Navbar({ isApp = true }) {
         >
           <span className="sos-pulse-ring"></span>
           <span className="sos-icon">🚨</span>
-          <span>SOS 102</span>
+          <span className="sos-btn-text">SOS 102</span>
         </a>
 
         <button
@@ -168,32 +182,33 @@ export function Navbar({ isApp = true }) {
         </select>
 
         {isAuthenticated ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap', flexShrink: 0 }}>
+          <div className="user-header-profile" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', flexShrink: 0 }}>
             <Link
               to="/profile"
+              className="user-badge-link"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 background: 'var(--white)',
                 border: '1px solid var(--line)',
                 borderRadius: '999px',
-                padding: '6px 14px',
+                padding: '6px 12px',
                 fontWeight: 700,
-                fontSize: '14px',
+                fontSize: '13.5px',
                 color: 'var(--plum)',
                 whiteSpace: 'nowrap',
                 flexShrink: 0
               }}
             >
               <span>👤</span>
-              <span>{user?.patientProfile?.fullName || user?.name || user?.email?.split('@')[0] || 'User'}</span>
+              <span className="user-name-text">{user?.patientProfile?.fullName || user?.name || user?.email?.split('@')[0] || 'User'}</span>
             </Link>
             <button
               onClick={logout}
               type="button"
-              className="secondary-btn"
-              style={{ padding: '8px 14px', fontSize: '13px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}
+              className="secondary-btn header-signout-btn"
+              style={{ padding: '6px 12px', fontSize: '12.5px', borderRadius: '999px', whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               {t('signOut', 'Sign out')}
             </button>

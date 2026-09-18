@@ -324,7 +324,7 @@ export function HospitalDoctors() {
           style={{
             marginTop: '20px',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
             gap: '18px',
           }}
         >
