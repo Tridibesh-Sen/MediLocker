@@ -261,6 +261,7 @@ export function Profile() {
 
       {/* Arogya Emergency Health Card Preview */}
       <div
+        className="profile-arogya-grid"
         style={{
           background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
           color: '#fff',
@@ -268,10 +269,6 @@ export function Profile() {
           padding: '28px',
           marginBottom: '32px',
           boxShadow: '0 20px 40px rgba(30, 27, 75, 0.25)',
-          display: 'grid',
-          gridTemplateColumns: '1.2fr 0.8fr',
-          gap: '24px',
-          alignItems: 'center',
         }}
       >
         <div>
@@ -291,7 +288,7 @@ export function Profile() {
             Unit ID: <strong style={{ color: '#fff', letterSpacing: '1px' }}>{unitId}</strong>
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', background: 'rgba(255, 255, 255, 0.08)', padding: '14px', borderRadius: '16px' }}>
+          <div className="profile-vitals-meta" style={{ background: 'rgba(255, 255, 255, 0.08)', padding: '14px', borderRadius: '16px' }}>
             <div>
               <small style={{ color: '#c7d2fe', display: 'block', fontSize: '11px' }}>BLOOD GROUP</small>
               <strong style={{ fontSize: '18px', color: '#fca5a5' }}>{formData.bloodGroup || 'Not specified'}</strong>

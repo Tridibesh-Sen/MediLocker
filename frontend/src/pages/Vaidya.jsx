@@ -323,7 +323,7 @@ export function Vaidya() {
           <h2 style={{ fontFamily: 'Manrope', margin: '4px 0 16px' }}>Compose Verified Prescription</h2>
 
           <form onSubmit={handleSavePrescription}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+            <div className="vaidya-prescribe-grid">
               <label>
                 <span style={{ fontSize: '13px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Attending Physician</span>
                 <input
@@ -412,7 +412,7 @@ export function Vaidya() {
       )}
 
       {/* Main Grid: 30-Second Synthesis + Simplified Physiological Profile */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', marginBottom: '28px' }}>
+      <div className="vaidya-main-grid">
         {/* Left: 30s High Density Clinical Briefing */}
         <div
           style={{
@@ -584,7 +584,7 @@ export function Vaidya() {
       </div>
 
       {/* Structured Clinical Breakdown: Suggested Tests, Active Medicines & Past History */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
+      <div className="vaidya-two-col-grid">
         {/* 1. Suggested Diagnostic Investigations */}
         <div
           style={{
