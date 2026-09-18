@@ -250,6 +250,7 @@ class ApiService {
   async createManualRecord(payload) {
     this.invalidateCache('/api/v1/records');
     this.invalidateCache('/api/v1/timeline');
+    this.invalidateCache('/api/v1/todo');
     return this.request('/api/v1/records', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -259,6 +260,7 @@ class ApiService {
   async deleteRecord(id) {
     this.invalidateCache('/api/v1/records');
     this.invalidateCache('/api/v1/timeline');
+    this.invalidateCache('/api/v1/todo');
     return this.request(`/api/v1/records/${id}`, {
       method: 'DELETE',
     });
@@ -274,10 +276,13 @@ class ApiService {
   }
 
   async logFeeling(feelingScore, notes = '') {
+    const severityColor = feelingScore === 1 ? 'GREEN' : feelingScore === 2 ? 'ORANGE' : 'RED';
     this.invalidateCache('/api/v1/timeline');
-    return this.request('/api/v1/timeline/feeling', {
+    this.invalidateCache('/api/v1/todo');
+    this.invalidateCache('/api/v1/timeline/feeling');
+    return this.request('/api/v1/todo/daily-feeling', {
       method: 'POST',
-      body: JSON.stringify({ feelingScore, notes }),
+      body: JSON.stringify({ feelingScore, severityColor, feedback: notes }),
     });
   }
 
@@ -385,6 +390,50 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
+  // --- Emergency QR & Unit ID Triage Lookup ---
+  async emergencyLookup(identifier) {
+    return this.request(`/api/v1/delegation/emergency-lookup/${encodeURIComponent(identifier)}`, {
+      skipCache: true,
+    });
+  }
+
+  // --- Hospital Doctor Organization Management ---
+  async getHospitalDoctors() {
+    return this.request('/api/v1/delegation/hospital/doctors', {
+      skipCache: true,
+    });
+  }
+
+  async searchDoctorsForHospital(query) {
+    return this.request(`/api/v1/delegation/hospital/search-doctors?query=${encodeURIComponent(query)}`, {
+      skipCache: true,
+    });
+  }
+
+  async addDoctorToHospital(payload) {
+    this.invalidateCache('/api/v1/delegation');
+    return this.request('/api/v1/delegation/hospital/add-doctor', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async toggleHospitalDoctor(doctorId, payload) {
+    this.invalidateCache('/api/v1/delegation');
+    return this.request(`/api/v1/delegation/hospital/doctor/${encodeURIComponent(doctorId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async removeDoctorFromHospital(doctorId) {
+    this.invalidateCache('/api/v1/delegation');
+    return this.request(`/api/v1/delegation/hospital/doctor/${encodeURIComponent(doctorId)}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const api = new ApiService();
+

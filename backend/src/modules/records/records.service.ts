@@ -557,7 +557,9 @@ export class RecordsService {
         patient: {
           include: { patientProfile: true },
         },
-        timelineEvent: true,
+        timelineEvent: {
+          include: { prescribedMeds: true },
+        },
       },
     });
 

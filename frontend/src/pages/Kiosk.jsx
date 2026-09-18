@@ -1,14 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import {
   speakInLanguage,
   getRecognitionLanguage,
   KIOSK_AUDIO_PROMPTS,
   SPEECH_LANG_MAP,
 } from '../utils/speech';
+import { generateQrSvg, generateKioskQrPayload } from '../utils/qr';
 
 export function Kiosk() {
+  const { user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const [activeTab, setActiveTab] = useState('walkin'); // 'walkin' | 'appointment'
   const [intakeMode, setIntakeMode] = useState('both'); // 'touch' | 'voice' | 'both'
@@ -18,14 +21,36 @@ export function Kiosk() {
   const [lookupFound, setLookupFound] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
 
-  // Kiosk Intake Data
-  const [selectedRegions, setSelectedRegions] = useState(new Set(['Chest & Lungs']));
-  const [selectedSymptoms, setSelectedSymptoms] = useState(new Set(['Severe Sharp Pain']));
-  const [painLevel, setPainLevel] = useState(2);
-  const [patientName, setPatientName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [age, setAge] = useState('35');
-  const [gender, setGender] = useState('Male');
+  // Kiosk Intake Data (Clean Real Patient State)
+  const [selectedRegions, setSelectedRegions] = useState(new Set());
+  const [selectedSymptoms, setSelectedSymptoms] = useState(new Set());
+  const [painLevel, setPainLevel] = useState(1);
+  const [patientName, setPatientName] = useState(
+    user?.patientProfile?.fullName || user?.name || ''
+  );
+  const [phone, setPhone] = useState(
+    user?.patientProfile?.emergencyContactPhone || user?.phone || ''
+  );
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState(
+    user?.patientProfile?.gender || 'Not specified'
+  );
+
+  // Auto-populate when user profile is loaded
+  useEffect(() => {
+    if (user) {
+      if (!patientName && (user.patientProfile?.fullName || user.name)) {
+        setPatientName(user.patientProfile?.fullName || user.name);
+      }
+      if (!phone && (user.patientProfile?.emergencyContactPhone || user.phone)) {
+        setPhone(user.patientProfile?.emergencyContactPhone || user.phone);
+      }
+      if (gender === 'Not specified' && user.patientProfile?.gender) {
+        setGender(user.patientProfile.gender);
+      }
+    }
+  }, [user]);
+
 
   // Voice Recognition on Kiosk
   const dialect = SPEECH_LANG_MAP[language]?.dialect || 'English';
@@ -180,6 +205,13 @@ export function Kiosk() {
 
       if (res?.data) {
         setTicketData(res.data);
+        try {
+          localStorage.setItem('medilockerLastKioskTicket', JSON.stringify({
+            ...res.data,
+            timestamp: new Date().toISOString(),
+          }));
+        } catch (_) {}
+
         const prompts = KIOSK_AUDIO_PROMPTS[language] || KIOSK_AUDIO_PROMPTS.en;
         if (res.data.triageCategory === 'RED' || triageCategory === 'RED') {
           playAudioGuide(prompts.emergency);
@@ -836,7 +868,20 @@ export function Kiosk() {
               </div>
             </div>
 
-            <div style={{ marginTop: '22px', display: 'flex', gap: '10px' }}>
+            {/* Generated OPD Ticket QR Code with Kiosk Intake Payload */}
+            <div style={{ marginTop: '16px', background: '#fff', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: generateQrSvg(generateKioskQrPayload(ticketData), { cellSize: 5, margin: 2 }),
+                }}
+                style={{ display: 'grid', placeItems: 'center' }}
+              />
+              <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, marginTop: '4px' }}>
+                Scan at Doctor Desk / Emergency Triage ↗
+              </div>
+            </div>
+
+            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
               <button
                 type="button"
                 onClick={() => window.print()}

@@ -1,9 +1,11 @@
 /**
  * Offline Emergency Arogya Pocket QR Generator
- * Generates an SVG Data-URI QR Matrix encoded completely offline without external network calls.
+ * Standard ISO/IEC 18004 QR Matrix Generator with Reed-Solomon Error Correction.
+ * Readable by all camera sensors, hardware 2D scanners, and jsQR decoders.
  */
+import QRCode from 'qrcode';
 
-export function generateEmergencyPayload(patient) {
+export function generateEmergencyPayload(patient, kioskData = null) {
   const profile = patient?.patientProfile || {};
   const name = profile.fullName || patient?.name || 'Registered Citizen';
   const blood = profile.bloodGroup || patient?.bloodGroup || 'Not specified';
@@ -11,65 +13,107 @@ export function generateEmergencyPayload(patient) {
     ? patient.allergies
     : (profile.baselineAllergies ? profile.baselineAllergies.split(',').map((s) => s.trim()).filter(Boolean) : []);
   const emPhone = profile.emergencyContactPhone || patient?.emergencyContact?.phone || patient?.phone || '102';
+  const unitId = patient?.medilockerId || 'ML-EMERGENCY';
 
-  return JSON.stringify({
+  const payload = {
     scheme: 'MEDILOCKER-EMERGENCY-V1',
-    unitId: patient?.medilockerId || 'ML-EMERGENCY',
+    unitId,
     name,
     blood,
     allergies: allergiesList,
     emergencyPhone: emPhone,
     verifiedAt: new Date().toISOString().split('T')[0],
-  });
+  };
+
+  if (kioskData) {
+    payload.kiosk = {
+      token: kioskData.tokenNumber || kioskData.ticketNumber,
+      complaint: kioskData.complaint || kioskData.complaintSummary,
+      triage: kioskData.triageCategory || kioskData.priorityTriage,
+      regions: kioskData.bodyRegions,
+      symptoms: kioskData.symptoms,
+      painScale: kioskData.painScale,
+    };
+  }
+
+  return JSON.stringify(payload);
 }
 
 /**
- * Returns a high-density standalone SVG QR code representation for wallet card printing
+ * Generate standard QR payload for an OPD Kiosk Queue Ticket
  */
-export function generateQrSvg(text) {
-  // Generate deterministic binary grid from hash string
-  const size = 25;
-  const hash = Array.from(text).reduce((acc, char, i) => (acc + char.charCodeAt(0) * (i + 1)) % 1000000007, 0);
+export function generateKioskQrPayload(ticketData) {
+  return JSON.stringify({
+    scheme: 'MEDILOCKER-EMERGENCY-V1',
+    type: 'KIOSK_INTAKE_TICKET',
+    unitId: ticketData.medilockerId || 'ML-OPD',
+    tokenNumber: ticketData.tokenNumber || ticketData.ticketNumber || 'OPD-1',
+    patientName: ticketData.patientName || 'OPD Patient',
+    complaint: ticketData.complaint || ticketData.complaintSummary || 'General Triage',
+    triageCategory: ticketData.triageCategory || 'GREEN',
+    verifiedAt: new Date().toISOString().split('T')[0],
+  });
+}
 
-  let rects = '';
-  // Corner position detection patterns (QR standard markers)
-  const isCornerFinder = (r, c) => {
-    if (r < 7 && c < 7) return true;
-    if (r < 7 && c >= size - 7) return true;
-    if (r >= size - 7 && c < 7) return true;
-    return false;
-  };
 
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      let isDark = false;
+/**
+ * Returns a standard high-density SVG QR code representation for wallet card printing & scanning
+ */
+export function generateQrSvg(text, options = {}) {
+  try {
+    const errorCorrectionLevel = options.errorCorrectionLevel || 'M';
+    const margin = options.margin !== undefined ? options.margin : 4;
+    const qr = QRCode.create(String(text || 'MEDILOCKER-SOVEREIGN'), { errorCorrectionLevel });
+    const size = qr.modules.size;
+    const data = qr.modules.data;
+    const fullSize = size + margin * 2;
+    const cellSize = options.cellSize || 8;
+    const totalDim = fullSize * cellSize;
 
-      // Draw standard QR corner finder patterns
-      if (
-        (r === 0 || r === 6 || c === 0 || c === 6) && (r < 7 && c < 7) ||
-        (r >= 2 && r <= 4 && c >= 2 && c <= 4) && (r < 7 && c < 7) ||
-        (r === 0 || r === 6 || c === size - 7 || c === size - 1) && (r < 7 && c >= size - 7) ||
-        (r >= 2 && r <= 4 && c >= size - 5 && c <= size - 3) && (r < 7 && c >= size - 7) ||
-        (r === size - 7 || r === size - 1 || c === 0 || c === 6) && (r >= size - 7 && c < 7) ||
-        (r >= size - 5 && r <= size - 3 && c >= 2 && c <= 4) && (r >= size - 7 && c < 7)
-      ) {
-        isDark = true;
-      } else if (!isCornerFinder(r, c)) {
-        // Deterministic pseudo-random pattern based on text input
-        const seed = (r * 31 + c * 17 + hash) % 101;
-        isDark = seed % 2 === 0;
-      }
-
-      if (isDark) {
-        rects += `<rect x="${c * 10}" y="${r * 10}" width="10" height="10" fill="#0f172a" />`;
+    let rects = '';
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (data[r * size + c]) {
+          const x = (c + margin) * cellSize;
+          const y = (r + margin) * cellSize;
+          rects += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="#0f172a" />`;
+        }
       }
     }
-  }
 
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size * 10} ${size * 10}" width="160" height="160" shape-rendering="crispEdges">
-      <rect width="100%" height="100%" fill="#ffffff"/>
-      ${rects}
-    </svg>
-  `;
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalDim} ${totalDim}" width="160" height="160" shape-rendering="crispEdges">
+        <rect width="100%" height="100%" fill="#ffffff"/>
+        ${rects}
+      </svg>
+    `;
+  } catch (err) {
+    console.error('Failed to generate standard QR code:', err);
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+        <rect width="100%" height="100%" fill="#fee2e2" rx="12"/>
+        <text x="80" y="80" text-anchor="middle" fill="#dc2626" font-size="12" font-weight="bold">QR Error</text>
+      </svg>
+    `;
+  }
+}
+
+/**
+ * Generates an asynchronous Data URL (PNG) if needed for canvas drawing or file downloads
+ */
+export async function generateQrDataUrl(text, width = 256) {
+  try {
+    return await QRCode.toDataURL(String(text || 'MEDILOCKER-SOVEREIGN'), {
+      width,
+      margin: 4,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff',
+      },
+    });
+  } catch (err) {
+    console.error('QR DataURL generation error:', err);
+    return '';
+  }
 }

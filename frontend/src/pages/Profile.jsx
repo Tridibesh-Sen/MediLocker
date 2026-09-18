@@ -176,8 +176,15 @@ export function Profile() {
     },
   };
 
-  const emergencyPayload = generateEmergencyPayload(dynamicUserForQr);
+  let lastKioskTicket = null;
+  try {
+    const raw = localStorage.getItem('medilockerLastKioskTicket');
+    if (raw) lastKioskTicket = JSON.parse(raw);
+  } catch (_) {}
+
+  const emergencyPayload = generateEmergencyPayload(dynamicUserForQr, lastKioskTicket);
   const qrSvgHtml = generateQrSvg(emergencyPayload);
+
 
   return (
     <>

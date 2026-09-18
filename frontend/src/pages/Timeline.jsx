@@ -9,16 +9,21 @@ export function Timeline() {
   useEffect(() => {
     async function loadTimeline() {
       try {
-        const [timelineRes, feelingsRes] = await Promise.allSettled([
-          api.getTimeline(),
-          api.getFeelings(14),
-        ]);
+        setLoading(true);
+        const timelineRes = await api.getTimeline();
+        if (timelineRes?.data) {
+          const rawData = timelineRes.data;
+          const eventsList = Array.isArray(rawData)
+            ? rawData
+            : Array.isArray(rawData.timeline)
+            ? rawData.timeline
+            : [];
+          setEvents(eventsList);
 
-        if (timelineRes.status === 'fulfilled' && Array.isArray(timelineRes.value?.data)) {
-          setEvents(timelineRes.value.data);
-        }
-        if (feelingsRes.status === 'fulfilled' && Array.isArray(feelingsRes.value?.data)) {
-          setFeelings(feelingsRes.value.data);
+          const feelingsList = Array.isArray(rawData.symptomSynopsis)
+            ? rawData.symptomSynopsis
+            : [];
+          setFeelings(feelingsList);
         }
       } catch (err) {
         console.error('Error loading timeline:', err);
@@ -32,7 +37,7 @@ export function Timeline() {
   const getHeatClass = (score) => {
     if (score === 1) return 'green';
     if (score === 2) return 'orange';
-    if (score === 3) return 'red';
+    if (score === 3 || score >= 4) return 'red';
     return 'empty';
   };
 
@@ -61,11 +66,11 @@ export function Timeline() {
           <div className="timeline-heat-strip">
             {feelings.slice(-14).map((f, i) => (
               <div key={i} className="heat-day">
-                <div className={`heat-dot ${getHeatClass(f.feelingScore)}`} title={`Score: ${f.feelingScore} on ${f.logDate}`}>
+                <div className={`heat-dot ${getHeatClass(f.feelingScore)}`} title={`Score: ${f.feelingScore} on ${f.date || f.logDate}`}>
                   {f.feelingScore === 1 ? '✓' : f.feelingScore === 2 ? '!' : '✕'}
                 </div>
                 <span className="heat-label">
-                  {typeof f.logDate === 'string' ? f.logDate.slice(5) : `D${i + 1}`}
+                  {typeof f.date === 'string' ? f.date.slice(5) : typeof f.logDate === 'string' ? f.logDate.slice(5) : `D${i + 1}`}
                 </span>
               </div>
             ))}
@@ -88,9 +93,11 @@ export function Timeline() {
         <div style={{ display: 'grid', gap: '20px' }}>
           {events.map((ev) => {
             const dateRaw = ev.eventDateDdmmyyyy || '';
-            const day = dateRaw.slice(0, 2) || '01';
-            const month = dateRaw.slice(2, 4) || '01';
-            const year = dateRaw.slice(4) || '2026';
+            const day = dateRaw.length === 8 ? dateRaw.slice(0, 2) : '01';
+            const month = dateRaw.length === 8 ? dateRaw.slice(2, 4) : '01';
+            const year = dateRaw.length === 8 ? dateRaw.slice(4) : '2026';
+            const recordId = ev.sourceDocument?.id || ev.medicalRecord?.id || ev.recordId;
+            const meds = ev.prescribedMedications || ev.prescribedMeds || [];
 
             return (
               <article key={ev.id} className="timeline-card">
@@ -101,7 +108,7 @@ export function Timeline() {
                 </div>
 
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
                       <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '1px', color: 'var(--muted)' }}>
                         {ev.clinicName || 'Digital Clinical Vault'}
@@ -110,9 +117,9 @@ export function Timeline() {
                         {ev.doctorName || 'Attending Physician'}
                       </h3>
                     </div>
-                    {ev.medicalRecord?.id && (
+                    {recordId && (
                       <a
-                        href={api.getRecordViewUrl(ev.medicalRecord.id)}
+                        href={api.getRecordViewUrl(recordId)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="view-btn"
@@ -138,7 +145,7 @@ export function Timeline() {
                             fontWeight: 700,
                           }}
                         >
-                          {d}
+                          {typeof d === 'string' ? d : d.name || JSON.stringify(d)}
                         </span>
                       ))}
                     </div>
@@ -151,13 +158,13 @@ export function Timeline() {
                   )}
 
                   {/* Prescribed Medications list if any */}
-                  {Array.isArray(ev.prescribedMeds) && ev.prescribedMeds.length > 0 && (
+                  {Array.isArray(meds) && meds.length > 0 && (
                     <div style={{ marginTop: '12px', borderTop: '1px solid var(--line)', paddingTop: '10px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--plum)' }}>
-                        Prescribed Medicines ({ev.prescribedMeds.length}):
+                        Prescribed Medicines ({meds.length}):
                       </span>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                        {ev.prescribedMeds.map((med, mIdx) => (
+                        {meds.map((med, mIdx) => (
                           <span
                             key={mIdx}
                             style={{
@@ -169,7 +176,7 @@ export function Timeline() {
                               fontWeight: 600,
                             }}
                           >
-                            💊 {med.medicineName} ({med.dosage} - {med.frequency})
+                            💊 {med.medicineName} {med.dosage ? `(${med.dosage})` : ''} {med.frequency ? `· ${med.frequency}` : ''}
                           </span>
                         ))}
                       </div>

@@ -22,10 +22,20 @@ export class TimelineService {
           },
         });
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
         const feelingLogs = await prisma.dailyFeelingLog.findMany({
           where: { patientId: patientUserId },
           orderBy: { logDate: 'desc' },
           take: 30,
+        });
+
+        const todayFeeling = feelingLogs.find((f) => {
+          const lDate = new Date(f.logDate);
+          return lDate >= today && lDate < tomorrow;
         });
 
         return {
@@ -52,12 +62,58 @@ export class TimelineService {
             feelingScore: f.feelingScore,
             feedback: f.patientFeedback,
           })),
+          todayFeelingSubmitted: Boolean(todayFeeling),
+          todayFeeling: todayFeeling ? {
+            id: todayFeeling.id,
+            feelingScore: todayFeeling.feelingScore,
+            severityColor: todayFeeling.severityColor,
+            feedback: todayFeeling.patientFeedback,
+            date: todayFeeling.logDate.toISOString().split('T')[0],
+          } : null,
         };
       },
       { ttlSeconds: 180, swrGraceSeconds: 60 }
     );
 
     return data;
+  }
+
+  /**
+   * Get patient recent feeling logs and today's status
+   */
+  static async getPatientFeelings(patientUserId: string, days = 14) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const logs = await prisma.dailyFeelingLog.findMany({
+      where: { patientId: patientUserId },
+      orderBy: { logDate: 'desc' },
+      take: Math.max(1, Math.min(days, 60)),
+    });
+
+    const todayFeeling = logs.find((f) => {
+      const lDate = new Date(f.logDate);
+      return lDate >= today && lDate < tomorrow;
+    });
+
+    return {
+      feelings: logs.map((f) => ({
+        date: f.logDate.toISOString().split('T')[0],
+        severityColor: f.severityColor,
+        feelingScore: f.feelingScore,
+        feedback: f.patientFeedback,
+      })),
+      todayFeelingSubmitted: Boolean(todayFeeling),
+      todayFeeling: todayFeeling ? {
+        id: todayFeeling.id,
+        feelingScore: todayFeeling.feelingScore,
+        severityColor: todayFeeling.severityColor,
+        feedback: todayFeeling.patientFeedback,
+        date: todayFeeling.logDate.toISOString().split('T')[0],
+      } : null,
+    };
   }
 
   /**

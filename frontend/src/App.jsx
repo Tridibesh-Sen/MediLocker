@@ -16,6 +16,8 @@ import { Kiosk } from './pages/Kiosk';
 import { Vaidya } from './pages/Vaidya';
 import { Delegation } from './pages/Delegation';
 import { Profile } from './pages/Profile';
+import { Scanner } from './pages/Scanner';
+import { HospitalDoctors } from './pages/HospitalDoctors';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -57,10 +59,15 @@ export function App() {
         <Route path="/companion" element={<Companion />} />
         <Route path="/ai-companion" element={<Companion />} />
         <Route path="/kiosk" element={<Kiosk />} />
+        <Route path="/hospital-doctors" element={<HospitalDoctors />} />
+        <Route path="/doctors" element={<HospitalDoctors />} />
         <Route path="/vaidya" element={<Vaidya />} />
+        <Route path="/scanner" element={<Scanner />} />
+        <Route path="/emergency-scanner" element={<Scanner />} />
         <Route path="/delegation" element={<Delegation />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
+
 
       {/* Fallback to Landing */}
       <Route path="*" element={<Navigate to="/" replace />} />

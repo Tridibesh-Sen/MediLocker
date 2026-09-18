@@ -122,4 +122,94 @@ export class DelegationController {
       next(error);
     }
   }
+
+  /**
+   * Hospital/Doctor/Emergency QR code & Unit ID instant triage lookup
+   */
+  static async emergencyLookup(req: Request, res: Response, next: NextFunction) {
+    try {
+      const identifier = (req.params.identifier || req.query.identifier || req.body?.identifier || req.body?.medilockerId) as string;
+      const accessorId = req.user?.userId;
+      const result = await DelegationService.emergencyLookup(identifier, accessorId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Hospital retrieves list of all allocated doctors
+   */
+  static async getHospitalDoctors(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await DelegationService.getHospitalDoctors(req.user!.userId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Hospital searches doctors across MediLocker by name, reg number, unit ID, email
+   */
+  static async searchDoctorsForHospital(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = (req.query.query || req.query.q || '') as string;
+      const result = await DelegationService.searchDoctorsForHospital(req.user!.userId, query);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Hospital adds / enrolls a doctor to its organization
+   */
+  static async addDoctorToHospital(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { doctorIdentifier, department } = req.body;
+      const result = await DelegationService.addDoctorToHospital(req.user!.userId, {
+        doctorIdentifier,
+        department,
+      });
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Hospital updates doctor affiliation status or department
+   */
+  static async toggleHospitalDoctor(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { doctorId } = req.params;
+      const { isActive, department } = req.body;
+      const result = await DelegationService.toggleHospitalDoctorStatus(
+        req.user!.userId,
+        doctorId,
+        { isActive, department }
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Hospital removes a doctor from its organization
+   */
+  static async removeDoctorFromHospital(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { doctorId } = req.params;
+      const result = await DelegationService.removeDoctorFromHospital(
+        req.user!.userId,
+        doctorId
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+

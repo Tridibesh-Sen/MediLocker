@@ -686,4 +686,495 @@ export class DelegationService {
       feelingLogs: patient.feelingLogs,
     };
   }
+
+  /**
+   * Emergency clinical profile lookup via QR scan or Sovereign Unit ID
+   * Delivers immediate life-critical vitals, allergies, blood group, chronic conditions, and emergency contacts.
+   */
+  static async emergencyLookup(identifier: string, accessorUserId?: string) {
+    if (!identifier || typeof identifier !== 'string') {
+      throw new AppError('Patient identifier or QR payload is required.', 400);
+    }
+
+    const cleanId = identifier.trim();
+
+    // Check if identifier is a JSON string from the QR code
+    let parsedUnitId = cleanId;
+    try {
+      if (cleanId.startsWith('{') && cleanId.endsWith('}')) {
+        const parsed = JSON.parse(cleanId);
+        if (parsed.unitId) parsedUnitId = parsed.unitId;
+      }
+    } catch (_) {}
+
+    const patient = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { medilockerId: { equals: parsedUnitId, mode: 'insensitive' } },
+          { id: parsedUnitId },
+          { email: { equals: parsedUnitId, mode: 'insensitive' } },
+          { phone: parsedUnitId },
+        ],
+      },
+      include: {
+        patientProfile: true,
+        prescribedMeds: {
+          where: { isActive: true },
+          take: 10,
+        },
+        timelineEvents: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+      },
+    });
+
+    if (!patient) {
+      throw new AppError('No patient record found matching the scanned QR code or Unit ID.', 404);
+    }
+
+    const profile = patient.patientProfile;
+    const allergiesList = profile?.baselineAllergies
+      ? profile.baselineAllergies.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+    const chronicList = profile?.medicalHistory
+      ? profile.medicalHistory.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+    const baselineMeds = profile?.baselineMedications
+      ? profile.baselineMedications.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    // Derive active prescriptions
+    const activePrescriptions = (patient.prescribedMeds || []).map((p: any) => ({
+      medicineName: p.medicineName,
+      dosage: p.dosage,
+      frequency: p.frequency,
+      instructions: p.instructions,
+    }));
+
+    // Record audit event for emergency access
+    if (accessorUserId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: accessorUserId,
+          action: 'EMERGENCY_QR_PROFILE_ACCESSED',
+          resourceType: 'PATIENT_EMERGENCY_DATA',
+          resourceId: patient.id,
+          eventDetails: {
+            medilockerId: patient.medilockerId,
+            timestamp: new Date().toISOString(),
+          },
+        },
+      }).catch(() => {});
+    }
+
+    // Check for recent OPD Kiosk intake event
+    const latestKioskEvent = patient.timelineEvents.find(
+      (e: any) => e.doctorName === 'OPD Triage Kiosk' || e.clinicalSummary?.includes('Kiosk')
+    );
+
+    return {
+      scheme: 'MEDILOCKER-EMERGENCY-V1',
+      patientId: patient.id,
+      medilockerId: patient.medilockerId,
+      fullName: profile?.fullName || 'Valued Patient',
+      dob: profile?.dob || null,
+      gender: profile?.gender || 'Not specified',
+      bloodGroup: profile?.bloodGroup || 'Not specified',
+      allergies: allergiesList,
+      chronicConditions: chronicList,
+      baselineMedications: baselineMeds,
+      activePrescriptions,
+      emergencyContact: {
+        name: profile?.emergencyContactName || 'Next of Kin',
+        phone: profile?.emergencyContactPhone || patient.phone || '102',
+      },
+      insuranceProvider: profile?.insuranceProvider || null,
+      address: {
+        city: profile?.city,
+        state: profile?.state,
+        pincode: profile?.pincode,
+      },
+      recentDiagnoses: patient.timelineEvents.flatMap((e: any) => (Array.isArray(e.diagnoses) ? e.diagnoses : [])).slice(0, 8),
+      latestKioskIntake: latestKioskEvent
+        ? {
+            doctorName: latestKioskEvent.doctorName,
+            clinicName: latestKioskEvent.clinicName,
+            diagnoses: latestKioskEvent.diagnoses,
+            clinicalSummary: latestKioskEvent.clinicalSummary,
+            date: latestKioskEvent.eventDateDdmmyyyy,
+            createdAt: latestKioskEvent.createdAt,
+          }
+        : null,
+      accessedAt: new Date().toISOString(),
+      isVerified: true,
+    };
+  }
+
+  /**
+   * Get all doctors affiliated under the authenticated hospital organization
+   */
+  static async getHospitalDoctors(hospitalUserId: string) {
+    const hospital = await prisma.hospitalProfile.findUnique({
+      where: { userId: hospitalUserId },
+    });
+
+    if (!hospital) {
+      throw new AppError('Hospital organization profile not found.', 404);
+    }
+
+    const hospitalDoctors = await prisma.hospitalDoctor.findMany({
+      where: { hospitalId: hospital.id },
+      include: {
+        doctor: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                medilockerId: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { allottedAt: 'desc' },
+    });
+
+    const doctorsList = hospitalDoctors.map((hd) => ({
+      id: hd.id,
+      doctorId: hd.doctorId,
+      doctorProfileId: hd.doctor.id,
+      medilockerId: hd.doctor.user?.medilockerId || 'ML-DOC',
+      fullName: hd.doctor.fullName,
+      specialization: hd.doctor.specialization,
+      registrationNumber: hd.doctor.registrationNumber,
+      institutionalDoctorId: hd.doctor.institutionalDoctorId,
+      department: hd.department || 'General Medicine',
+      isActive: hd.isActive,
+      allottedAt: hd.allottedAt,
+      phone: hd.doctor.phone || hd.doctor.user?.phone,
+      email: hd.doctor.professionalEmail || hd.doctor.user?.email,
+      clinicName: hd.doctor.clinicName,
+      city: hd.doctor.city,
+      yearsExperience: hd.doctor.yearsExperience,
+      degree: hd.doctor.degree,
+      verificationStatus: hd.doctor.verificationStatus,
+    }));
+
+    const departments = Array.from(new Set(doctorsList.map((d) => d.department).filter(Boolean)));
+
+    return {
+      hospital: {
+        id: hospital.id,
+        hospitalName: hospital.hospitalName,
+        hospitalId: hospital.hospitalId,
+        officialEmail: hospital.officialEmail,
+        phone: hospital.phone,
+        city: hospital.city,
+        state: hospital.state,
+      },
+      stats: {
+        total: doctorsList.length,
+        active: doctorsList.filter((d) => d.isActive).length,
+        departmentsCount: departments.length,
+        departments,
+      },
+      doctors: doctorsList,
+    };
+  }
+
+  /**
+   * Search doctors across MediLocker for hospital affiliation
+   */
+  static async searchDoctorsForHospital(hospitalUserId: string, query: string) {
+    if (!query || typeof query !== 'string' || query.trim().length < 2) {
+      return { doctors: [] };
+    }
+
+    const hospital = await prisma.hospitalProfile.findUnique({
+      where: { userId: hospitalUserId },
+    });
+
+    if (!hospital) {
+      throw new AppError('Hospital organization profile not found.', 404);
+    }
+
+    const cleanQuery = query.trim();
+
+    // Fetch matching doctor profiles
+    const doctors = await prisma.doctorProfile.findMany({
+      where: {
+        OR: [
+          { fullName: { contains: cleanQuery, mode: 'insensitive' } },
+          { specialization: { contains: cleanQuery, mode: 'insensitive' } },
+          { registrationNumber: { contains: cleanQuery, mode: 'insensitive' } },
+          { professionalEmail: { contains: cleanQuery, mode: 'insensitive' } },
+          { user: { medilockerId: { contains: cleanQuery.toUpperCase(), mode: 'insensitive' } } },
+          { user: { email: { contains: cleanQuery, mode: 'insensitive' } } },
+        ],
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            medilockerId: true,
+            email: true,
+            phone: true,
+          },
+        },
+        hospitalDoctors: {
+          where: { hospitalId: hospital.id },
+        },
+      },
+      take: 20,
+    });
+
+    const results = doctors.map((doc) => {
+      const affiliation = doc.hospitalDoctors[0] || null;
+      return {
+        doctorId: doc.id,
+        fullName: doc.fullName,
+        specialization: doc.specialization,
+        registrationNumber: doc.registrationNumber,
+        institutionalDoctorId: doc.institutionalDoctorId,
+        medilockerId: doc.user?.medilockerId || 'ML-DOC',
+        email: doc.professionalEmail || doc.user?.email,
+        phone: doc.phone || doc.user?.phone,
+        clinicName: doc.clinicName,
+        city: doc.city,
+        yearsExperience: doc.yearsExperience,
+        degree: doc.degree,
+        isAffiliated: !!affiliation,
+        department: affiliation?.department || null,
+        isActive: affiliation ? affiliation.isActive : null,
+      };
+    });
+
+    return { doctors: results };
+  }
+
+  /**
+   * Add / affiliate a doctor under hospital organization
+   */
+  static async addDoctorToHospital(
+    hospitalUserId: string,
+    data: { doctorIdentifier: string; department?: string }
+  ) {
+    if (!data.doctorIdentifier) {
+      throw new AppError('Doctor Unit ID, Registration Number, or Email is required.', 400);
+    }
+
+    const hospital = await prisma.hospitalProfile.findUnique({
+      where: { userId: hospitalUserId },
+    });
+
+    if (!hospital) {
+      throw new AppError('Hospital organization profile not found.', 404);
+    }
+
+    const cleanId = data.doctorIdentifier.trim();
+
+    // Look for doctor profile
+    const doctor = await prisma.doctorProfile.findFirst({
+      where: {
+        OR: [
+          { id: cleanId },
+          { registrationNumber: cleanId },
+          { institutionalDoctorId: cleanId },
+          { professionalEmail: { equals: cleanId, mode: 'insensitive' } },
+          { user: { medilockerId: cleanId.toUpperCase() } },
+          { user: { email: { equals: cleanId, mode: 'insensitive' } } },
+          { fullName: { equals: cleanId, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!doctor) {
+      throw new AppError(
+        'Doctor not found. Please verify the Doctor Unit ID, Registration Number, or registered Email.',
+        404
+      );
+    }
+
+    const department = (data.department && data.department.trim()) || 'General Medicine';
+
+    // Upsert into hospitalDoctor table
+    const hospitalDoctor = await prisma.hospitalDoctor.upsert({
+      where: {
+        hospitalId_doctorId: {
+          hospitalId: hospital.id,
+          doctorId: doctor.id,
+        },
+      },
+      update: {
+        department,
+        isActive: true,
+      },
+      create: {
+        hospitalId: hospital.id,
+        doctorId: doctor.id,
+        department,
+        isActive: true,
+      },
+      include: {
+        doctor: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                medilockerId: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Record audit event
+    await prisma.auditLog.create({
+      data: {
+        userId: hospitalUserId,
+        action: 'HOSPITAL_DOCTOR_ADDED',
+        resourceType: 'HOSPITAL_ORGANIZATION',
+        resourceId: hospital.id,
+        eventDetails: {
+          hospitalName: hospital.hospitalName,
+          doctorId: doctor.id,
+          doctorName: doctor.fullName,
+          department,
+          timestamp: new Date().toISOString(),
+        },
+      },
+    }).catch(() => {});
+
+    return {
+      message: `Dr. ${doctor.fullName} has been successfully added to ${hospital.hospitalName} (${department}).`,
+      hospitalDoctor: {
+        id: hospitalDoctor.id,
+        doctorId: doctor.id,
+        fullName: doctor.fullName,
+        specialization: doctor.specialization,
+        registrationNumber: doctor.registrationNumber,
+        department: hospitalDoctor.department,
+        isActive: hospitalDoctor.isActive,
+        allottedAt: hospitalDoctor.allottedAt,
+        medilockerId: doctor.user?.medilockerId,
+      },
+    };
+  }
+
+  /**
+   * Update active status or department for an affiliated doctor
+   */
+  static async toggleHospitalDoctorStatus(
+    hospitalUserId: string,
+    doctorId: string,
+    data: { isActive?: boolean; department?: string }
+  ) {
+    const hospital = await prisma.hospitalProfile.findUnique({
+      where: { userId: hospitalUserId },
+    });
+
+    if (!hospital) {
+      throw new AppError('Hospital organization profile not found.', 404);
+    }
+
+    const record = await prisma.hospitalDoctor.findFirst({
+      where: {
+        hospitalId: hospital.id,
+        OR: [
+          { doctorId },
+          { id: doctorId },
+          { doctor: { registrationNumber: doctorId } },
+          { doctor: { user: { medilockerId: doctorId.toUpperCase() } } },
+        ],
+      },
+    });
+
+    if (!record) {
+      throw new AppError('Doctor affiliation record not found under this hospital.', 404);
+    }
+
+    const updated = await prisma.hospitalDoctor.update({
+      where: { id: record.id },
+      data: {
+        ...(typeof data.isActive === 'boolean' ? { isActive: data.isActive } : {}),
+        ...(data.department ? { department: data.department.trim() } : {}),
+      },
+      include: {
+        doctor: true,
+      },
+    });
+
+    return {
+      message: 'Doctor affiliation updated successfully.',
+      doctor: {
+        id: updated.id,
+        doctorId: updated.doctorId,
+        fullName: updated.doctor.fullName,
+        department: updated.department,
+        isActive: updated.isActive,
+      },
+    };
+  }
+
+  /**
+   * Remove doctor from hospital organization
+   */
+  static async removeDoctorFromHospital(hospitalUserId: string, doctorId: string) {
+    const hospital = await prisma.hospitalProfile.findUnique({
+      where: { userId: hospitalUserId },
+    });
+
+    if (!hospital) {
+      throw new AppError('Hospital organization profile not found.', 404);
+    }
+
+    const record = await prisma.hospitalDoctor.findFirst({
+      where: {
+        hospitalId: hospital.id,
+        OR: [
+          { doctorId },
+          { id: doctorId },
+          { doctor: { registrationNumber: doctorId } },
+          { doctor: { user: { medilockerId: doctorId.toUpperCase() } } },
+        ],
+      },
+      include: { doctor: true },
+    });
+
+    if (!record) {
+      throw new AppError('Doctor affiliation record not found under this hospital.', 404);
+    }
+
+    await prisma.hospitalDoctor.delete({
+      where: { id: record.id },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: hospitalUserId,
+        action: 'HOSPITAL_DOCTOR_REMOVED',
+        resourceType: 'HOSPITAL_ORGANIZATION',
+        resourceId: hospital.id,
+        eventDetails: {
+          hospitalName: hospital.hospitalName,
+          doctorId: record.doctorId,
+          doctorName: record.doctor.fullName,
+          timestamp: new Date().toISOString(),
+        },
+      },
+    }).catch(() => {});
+
+    return {
+      message: `Dr. ${record.doctor.fullName} removed from ${hospital.hospitalName}.`,
+    };
+  }
 }

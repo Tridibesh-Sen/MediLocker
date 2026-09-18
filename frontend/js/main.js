@@ -756,7 +756,7 @@
           const doctorStr=r.doctorName?`${r.doctorName} · `:'';
           const hospitalStr=r.clinicName||'Verified in Vault';
           const medsCount=r.prescribedMedications?.length?` · ${r.prescribedMedications.length} Medicines Prescribed`:'';
-          const fileLink=r.fileUrl||apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
+          const fileLink=apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
           return `
             <div class="record-card" data-type="${isLab?'report':'prescription'}">
               <div class="record-icon ${isLab?'report-icon':'prescription-icon'}">${isLab?'⚗':'℞'}</div>
@@ -1108,6 +1108,10 @@
       return;
     }
 
+    const todayStr=new Date().toISOString().split('T')[0];
+    const todayLog=symptomLogs.find(l=>l.date===todayStr);
+    const btnGroup=document.getElementById('feelingButtonGroup');
+
     // Render 14-day feeling heat strip from real DB logs
     if(container){
       const days=[];
@@ -1124,12 +1128,60 @@
       container.innerHTML=days.join('');
     }
 
+    const renderFeelingUI=(isEditing=false)=>{
+      if(!btnGroup)return;
+      if(todayLog && !isEditing){
+        btnGroup.style.display='none';
+        if(msg){
+          const sevCol=todayLog.severityColor?.toLowerCase();
+          const sevLabel=sevCol==='green'?'🟢 Well / Improving':sevCol==='orange'?'🟠 Neutral / Mild Discomfort':'🔴 Worse / Side Effects';
+          msg.innerHTML=`
+            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:14px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:14px;color:#15803d;font-weight:800;">✓ Today's Check-in Completed: <strong>${sevLabel}</strong></span>
+                <span style="font-size:11px;color:#166534;background:#dcfce7;padding:2px 8px;border-radius:999px;font-weight:700;">Locked until 12:00 AM Midnight</span>
+              </div>
+              <button type="button" id="editFeelingBtn" style="background:#ffffff;border:1px solid #86efac;color:#15803d;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;cursor:pointer;">✎ Change</button>
+            </div>
+          `;
+          const editBtn=document.getElementById('editFeelingBtn');
+          if(editBtn){
+            editBtn.addEventListener('click',()=>renderFeelingUI(true));
+          }
+        }
+      }else{
+        btnGroup.style.display='flex';
+        if(msg){
+          if(isEditing){
+            msg.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);"><span>Editing today's feeling entry...</span><button type="button" id="cancelEditFeelingBtn" style="background:none;border:none;color:var(--plum);cursor:pointer;text-decoration:underline;">Cancel</button></div>`;
+            const cancelBtn=document.getElementById('cancelEditFeelingBtn');
+            if(cancelBtn){
+              cancelBtn.addEventListener('click',()=>renderFeelingUI(false));
+            }
+          }else{
+            msg.textContent='';
+          }
+        }
+      }
+    };
+
+    renderFeelingUI(false);
+
+    // Schedule 12:00 AM Midnight Reset
+    const now=new Date();
+    const tomorrowMidnight=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0,500);
+    const msUntilMidnight=tomorrowMidnight.getTime()-now.getTime();
+    if(window._timelineMidnightTimer) clearTimeout(window._timelineMidnightTimer);
+    window._timelineMidnightTimer=setTimeout(()=>{
+      bindTimeline();
+    },msUntilMidnight);
+
     document.querySelectorAll('#feelingButtonGroup button').forEach(btn=>{
       btn.addEventListener('click',async()=>{
         const feeling=btn.dataset.feeling;
         btn.disabled=true;
         try{
-          const score=feeling==='green'?5:feeling==='orange'?3:1;
+          const score=feeling==='green'?1:feeling==='orange'?2:3;
           const res=await fetch(apiUrl('/api/v1/todo/daily-feeling'),{
             method:'POST',
             headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
@@ -1139,13 +1191,6 @@
             alert('Failed to save feeling to database.');
             btn.disabled=false;
             return;
-          }
-          document.querySelectorAll('#feelingButtonGroup button').forEach(b=>b.classList.remove('active'));
-          btn.classList.add('active');
-          if(msg){
-            msg.textContent=feeling==='green'?'✓ Logged to database as "Well / Improving". Great progress!'
-              :feeling==='orange'?'✓ Logged to database as "Neutral / Mild Discomfort". Monitored.'
-              :'⚠ Logged to database as "Worse / Side Effects". Noted for doctor escalation.';
           }
 
           // Clinical Adverse Symptom Triage Guidance
@@ -1864,7 +1909,7 @@
             const doctor=r.doctorName?`${r.doctorName} · `:'';
             const clinic=r.clinicName||'MediLocker Lab';
             const diagnoses=Array.isArray(r.diagnoses)?r.diagnoses.filter(d=>d!==title):[];
-            const fileLink=r.fileUrl||apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
+            const fileLink=apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
             return `
               <article class="record-card report-card" style="margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px 24px;display:flex;flex-direction:column;gap:12px;text-align:left;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
@@ -2819,7 +2864,7 @@
             <h3 style="font:800 20px 'Manrope';margin:0 0 12px;">1. Medical Documents & Prescriptions (${records.length})</h3>
             <div class="records-list">
               ${records.length===0?'<p style="color:var(--muted);font-size:14px;">No documents in patient vault.</p>':records.map(r=>{
-                const fileLink = r.fileUrl || apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
+                const fileLink = apiUrl(`/api/v1/records/${r.id}/view?token=${encodeURIComponent(token)}`);
                 return `
                 <div class="record-card" style="padding:14px 18px;">
                   <div class="record-icon ${r.documentType==='PRESCRIPTION'?'prescription-icon':'report-icon'}" style="width:42px;height:42px;font-size:16px;">

@@ -6,7 +6,35 @@ import { useAuth } from '../context/AuthContext';
 function safeArray(val, fallback = []) {
   if (Array.isArray(val)) return val;
   if (typeof val === 'string' && val.trim()) return [val];
+  if (val && typeof val === 'object') return [val];
   return fallback;
+}
+
+// Format complex AI response objects into clean human-readable clinical text
+function formatClinicalItem(item) {
+  if (!item) return '';
+  if (typeof item === 'string') return item.replace(/\*\*/g, '');
+  if (typeof item === 'object') {
+    if (item.flag) {
+      const reason = item.reason || item.description || '';
+      return `${item.flag}${reason ? ` (${reason})` : ''}`.replace(/\*\*/g, '');
+    }
+    if (item.complaint) {
+      const diag = item.diagnosis ? ` [Diagnosis: ${item.diagnosis}]` : '';
+      return `${item.complaint}${diag}`.replace(/\*\*/g, '');
+    }
+    if (item.action) {
+      const rationale = item.rationale ? ` — Rationale: ${item.rationale}` : '';
+      return `${item.action}${rationale}`.replace(/\*\*/g, '');
+    }
+    if (item.title) {
+      const desc = item.description || item.detail || '';
+      return `${item.title}${desc ? `: ${desc}` : ''}`.replace(/\*\*/g, '');
+    }
+    const parts = Object.values(item).filter((v) => typeof v === 'string');
+    if (parts.length > 0) return parts.join(' · ').replace(/\*\*/g, '');
+  }
+  return String(item).replace(/\*\*/g, '');
 }
 
 export function Vaidya() {
@@ -16,8 +44,8 @@ export function Vaidya() {
   const [loadError, setLoadError] = useState(null);
   const [searchUnitId, setSearchUnitId] = useState('');
 
-  // Double-coding lookup
-  const [codingQuery, setCodingQuery] = useState('Acid dyspepsia with epigastric burning');
+  // Double-coding lookup (populated from real patient diagnosis if available)
+  const [codingQuery, setCodingQuery] = useState('');
   const [codingResult, setCodingResult] = useState(null);
   const [codingLoading, setCodingLoading] = useState(false);
 
@@ -25,14 +53,18 @@ export function Vaidya() {
   const [fhirData, setFhirData] = useState(null);
   const [fhirLoading, setFhirLoading] = useState(false);
 
-  // Prescription Writer
+  // Prescription Writer (pre-filled with real doctor/patient context)
   const [showPrescribe, setShowPrescribe] = useState(false);
-  const [doctorName, setDoctorName] = useState('Dr. Sharma (Attending Vaidya)');
-  const [clinicName, setClinicName] = useState('Ayurvedic / Integrative OPD');
-  const [diagnosesText, setDiagnosesText] = useState('Amlapitta (Hyperacidity)');
-  const [medName, setMedName] = useState('Avipattikar Churna 5g');
+  const [doctorName, setDoctorName] = useState(
+    user?.doctorProfile?.fullName ? `Dr. ${user.doctorProfile.fullName}` : 'Attending Physician'
+  );
+  const [clinicName, setClinicName] = useState(
+    user?.doctorProfile?.clinicName || 'MediLocker Sovereign Clinical Vault'
+  );
+  const [diagnosesText, setDiagnosesText] = useState('');
+  const [medName, setMedName] = useState('');
   const [medFreq, setMedFreq] = useState('1-0-1');
-  const [medTiming, setMedTiming] = useState('Before food');
+  const [medTiming, setMedTiming] = useState('After food');
   const [prescribeSaved, setPrescribeSaved] = useState(false);
 
   const fetchTriage = async (targetId = '') => {
@@ -42,6 +74,12 @@ export function Vaidya() {
       const res = await api.getClinicalTriage(targetId);
       if (res?.data) {
         setTriageData(res.data);
+        if (res.data.primaryDiagnosis && !codingQuery) {
+          setCodingQuery(res.data.primaryDiagnosis);
+        }
+        if (res.data.primaryDiagnosis && !diagnosesText) {
+          setDiagnosesText(res.data.primaryDiagnosis);
+        }
       }
     } catch (err) {
       console.error('Triage load error:', err);
@@ -116,23 +154,27 @@ export function Vaidya() {
   };
 
   const profile = triageData?.physiologicalProfile || {
-    neuroMotorScore: 35,
-    metabolicScore: 45,
-    structuralScore: 20,
-    metabolicStatus: 'Equilibrium (Sama)',
+    nervousMusculoskeletalScore: 35,
+    metabolismInflammationScore: 45,
+    tissueFluidScore: 20,
+    digestiveGutHealth: 'Balanced Gut Health',
   };
 
-  // Safe array extraction from triage data (AI can return strings instead of arrays)
+  // Safe array extraction from triage data
   const redFlags = safeArray(triageData?.redFlags, []);
   const chiefComplaints = safeArray(triageData?.chiefComplaint30s, [
-    'Patient undergoing routine clinical evaluation',
-    'Medical records verified in sovereign vault',
+    'No clinical documents or prescriptions uploaded yet to vault',
+    'Awaiting initial medical consultation or document upload',
   ]);
   const clinicalPlan = safeArray(triageData?.recommendedClinicalPlan, [
-    'Review active medication compliance',
-    'Evaluate routine laboratory reports',
-    'Maintain balanced diet and adequate hydration',
+    'Upload active prescriptions and recent lab reports to initialize timeline',
+    'Record baseline vitals and complete profile details',
+    'Maintain hydration and consult attending physician for evaluation',
   ]);
+  const suggestedTests = safeArray(triageData?.suggestedTests || triageData?.clinicalTestsDue, []);
+  const prescribedMeds = safeArray(triageData?.prescribedMeds, []);
+  const pastHistory = safeArray(triageData?.pastHistory, []);
+
   const hasRealRedFlags =
     redFlags.length > 0 &&
     !redFlags.every((f) => typeof f === 'string' && f.toLowerCase().includes('no acute'));
@@ -369,7 +411,7 @@ export function Vaidya() {
         </div>
       )}
 
-      {/* Main Grid: 30-Second Synthesis + Physiological Profile */}
+      {/* Main Grid: 30-Second Synthesis + Simplified Physiological Profile */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', marginBottom: '28px' }}>
         {/* Left: 30s High Density Clinical Briefing */}
         <div
@@ -387,7 +429,7 @@ export function Vaidya() {
           </div>
 
           <h3 style={{ fontFamily: 'Manrope', fontSize: '20px', margin: '8px 0 14px' }}>
-            Chief Complaints & Red Flags
+            Chief Complaints & Critical Alerts
           </h3>
 
           {/* Red Flag Alert */}
@@ -396,25 +438,31 @@ export function Vaidya() {
               style={{
                 background: '#fef2f2',
                 border: '1px solid #f87171',
-                borderRadius: '12px',
-                padding: '12px 16px',
+                borderLeft: '5px solid #ef4444',
+                borderRadius: '14px',
+                padding: '14px 18px',
                 color: '#991b1b',
                 fontSize: '13px',
-                marginBottom: '14px',
+                marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '10px',
               }}
             >
-              <span>🚨</span>
-              <strong>{redFlags.join(', ')}</strong>
+              <span style={{ fontSize: '20px' }}>🚨</span>
+              <div>
+                <strong style={{ display: 'block', fontSize: '14px', marginBottom: '2px' }}>Critical Clinical Alerts & Red Flags:</strong>
+                <span>{redFlags.map(formatClinicalItem).filter(Boolean).join(' · ')}</span>
+              </div>
             </div>
           )}
 
           {/* Chief Complaint Bullets */}
           <ul style={{ margin: '0 0 18px', paddingLeft: '20px', lineHeight: 1.7, fontSize: '15px' }}>
             {chiefComplaints.map((cc, i) => (
-              <li key={i}>{typeof cc === 'string' ? cc : JSON.stringify(cc)}</li>
+              <li key={i} style={{ marginBottom: '8px' }}>
+                {formatClinicalItem(cc)}
+              </li>
             ))}
           </ul>
 
@@ -423,28 +471,29 @@ export function Vaidya() {
             <strong style={{ fontSize: '14px', color: 'var(--plum)', display: 'block', marginBottom: '8px' }}>
               Actionable Clinical Guidelines:
             </strong>
-            <div style={{ display: 'grid', gap: '6px' }}>
+            <div style={{ display: 'grid', gap: '8px' }}>
               {clinicalPlan.map((plan, pIdx) => (
                 <div
                   key={pIdx}
                   style={{
                     background: '#f8fafc',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
                     fontSize: '13px',
-                    borderLeft: '3px solid #6366f1',
+                    lineHeight: 1.55,
+                    borderLeft: '4px solid #6366f1',
                   }}
                 >
-                  • {typeof plan === 'string' ? plan : JSON.stringify(plan)}
+                  • {formatClinicalItem(plan)}
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right: Physiological Profile & Standardized Double Codes */}
+        {/* Right: Simplified Physiological Profile & Standardized Double Codes */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Physiological Radar/Bars Card */}
+          {/* Physiological Vitals Indices Card */}
           <div
             style={{
               background: 'var(--white)',
@@ -456,43 +505,43 @@ export function Vaidya() {
           >
             <span className="eyebrow" style={{ color: '#b45309' }}>PHYSIOLOGICAL PROFILE</span>
             <h3 style={{ fontFamily: 'Manrope', fontSize: '18px', margin: '6px 0 14px' }}>
-              Tridosha Metabolic Systemic Indices
+              Systemic Biological Vital Indices
             </h3>
 
             <div style={{ display: 'grid', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                  <span>Neuro-Motor Regulation (Vata):</span>
-                  <strong>{profile.neuroMotorScore || 35}%</strong>
+                  <span>Nervous & Musculoskeletal Balance:</span>
+                  <strong>{profile.nervousMusculoskeletalScore || profile.neuroMotorScore || 35}%</strong>
                 </div>
                 <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ width: `${profile.neuroMotorScore || 35}%`, background: '#38bdf8', height: '100%' }}></div>
+                  <div style={{ width: `${profile.nervousMusculoskeletalScore || profile.neuroMotorScore || 35}%`, background: '#38bdf8', height: '100%' }}></div>
                 </div>
               </div>
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                  <span>Metabolic-Inflammatory State (Pitta):</span>
-                  <strong>{profile.metabolicScore || 45}%</strong>
+                  <span>Metabolism & Cellular Inflammation:</span>
+                  <strong>{profile.metabolismInflammationScore || profile.metabolicScore || 45}%</strong>
                 </div>
                 <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ width: `${profile.metabolicScore || 45}%`, background: '#f59e0b', height: '100%' }}></div>
+                  <div style={{ width: `${profile.metabolismInflammationScore || profile.metabolicScore || 45}%`, background: '#f59e0b', height: '100%' }}></div>
                 </div>
               </div>
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                  <span>Structural-Fluid Balance (Kapha):</span>
-                  <strong>{profile.structuralScore || 20}%</strong>
+                  <span>Tissue Structure & Fluid Balance:</span>
+                  <strong>{profile.tissueFluidScore || profile.structuralScore || 20}%</strong>
                 </div>
                 <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ width: `${profile.structuralScore || 20}%`, background: '#10b981', height: '100%' }}></div>
+                  <div style={{ width: `${profile.tissueFluidScore || profile.structuralScore || 20}%`, background: '#10b981', height: '100%' }}></div>
                 </div>
               </div>
             </div>
 
-            <div style={{ marginTop: '16px', background: '#fefce8', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', color: '#854d0e' }}>
-              <strong>Agni / Digestive Status:</strong> {profile.metabolicStatus || 'Equilibrium (Sama)'}
+            <div style={{ marginTop: '16px', background: '#fefce8', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', color: '#854d0e', border: '1px solid #fef08a' }}>
+              <strong>Digestive & Gut Health Status:</strong> {profile.digestiveGutHealth || profile.metabolicStatus || 'Optimal Gut Health (Balanced)'}
             </div>
           </div>
 
@@ -517,7 +566,7 @@ export function Vaidya() {
                   NAMASTE NATIONAL CODE
                 </span>
                 <strong style={{ display: 'block', fontSize: '15px', color: 'var(--plum)', margin: '2px 0' }}>
-                  {triageData?.standardizedDoubleCodes?.namasteCode || 'NAMC-AG-01'} · {triageData?.standardizedDoubleCodes?.namasteTerm || 'Amlapitta'}
+                  {triageData?.standardizedDoubleCodes?.namasteCode || 'NAMC-DX-01'} · {triageData?.standardizedDoubleCodes?.namasteTerm || 'General Clinical Evaluation'}
                 </strong>
               </div>
 
@@ -532,6 +581,253 @@ export function Vaidya() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Structured Clinical Breakdown: Suggested Tests, Active Medicines & Past History */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
+        {/* 1. Suggested Diagnostic Investigations */}
+        <div
+          style={{
+            background: 'var(--white)',
+            border: '1px solid var(--line)',
+            borderRadius: '24px',
+            padding: '24px',
+            boxShadow: 'var(--shadow)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>🔬</span>
+              <h3 style={{ fontFamily: 'Manrope', fontSize: '18px', margin: 0 }}>
+                Suggested Diagnostic Tests ({suggestedTests.length})
+              </h3>
+            </div>
+          </div>
+
+          {suggestedTests.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontSize: '14px', margin: 0 }}>
+              No immediate diagnostic investigations pending in current consultation.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {suggestedTests.map((test, tIdx) => {
+                const testName = typeof test === 'string' ? test : test.testName || test.name || 'Investigation';
+                const urgency = typeof test === 'object' && test.urgency ? test.urgency : 'Routine';
+                const reason = typeof test === 'object' && test.clinicalReason ? test.clinicalReason : '';
+                const isUrgent = urgency.toLowerCase().includes('immediate') || urgency.toLowerCase().includes('urgent');
+
+                return (
+                  <div
+                    key={tIdx}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: '14px', color: '#0f172a', display: 'block' }}>{formatClinicalItem(testName)}</strong>
+                      {reason && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '2px' }}>{formatClinicalItem(reason)}</small>}
+                    </div>
+                    <span
+                      style={{
+                        background: isUrgent ? '#fee2e2' : '#fef3c7',
+                        color: isUrgent ? '#991b1b' : '#92400e',
+                        padding: '4px 10px',
+                        borderRadius: '999px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {urgency}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 2. Active Prescribed Medications */}
+        <div
+          style={{
+            background: 'var(--white)',
+            border: '1px solid var(--line)',
+            borderRadius: '24px',
+            padding: '24px',
+            boxShadow: 'var(--shadow)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>💊</span>
+              <h3 style={{ fontFamily: 'Manrope', fontSize: '18px', margin: 0 }}>
+                Active Prescribed Medicines ({prescribedMeds.length})
+              </h3>
+            </div>
+          </div>
+
+          {prescribedMeds.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontSize: '14px', margin: 0 }}>
+              No active prescription courses recorded in patient vault.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {prescribedMeds.map((med, mIdx) => {
+                const medName = typeof med === 'string' ? med : med.medicineName || 'Medication';
+                const salt = typeof med === 'object' && med.activeSalt ? med.activeSalt : '';
+                const freq = typeof med === 'object' && med.frequency ? med.frequency : 'Daily';
+                const timing = typeof med === 'object' && med.timingInstruction ? med.timingInstruction : '';
+                const dosage = typeof med === 'object' && med.dosage ? med.dosage : '';
+
+                return (
+                  <div
+                    key={mIdx}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: '14px', color: '#0f172a', display: 'block' }}>{formatClinicalItem(medName)}</strong>
+                      {salt && <small style={{ color: 'var(--muted)', display: 'block' }}>Active Salt: {salt}</small>}
+                      {(dosage || timing) && (
+                        <small style={{ color: '#0284c7', display: 'block', marginTop: '2px' }}>
+                          {[dosage, timing].filter(Boolean).join(' · ')}
+                        </small>
+                      )}
+                    </div>
+                    <span
+                      style={{
+                        background: '#eff6ff',
+                        color: '#1e40af',
+                        border: '1px solid #bfdbfe',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {freq}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Past Medical History & Document Timeline */}
+      <div
+        style={{
+          background: 'var(--white)',
+          border: '1px solid var(--line)',
+          borderRadius: '24px',
+          padding: '26px',
+          marginBottom: '28px',
+          boxShadow: 'var(--shadow)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+          <span style={{ fontSize: '20px' }}>📜</span>
+          <h3 style={{ fontFamily: 'Manrope', fontSize: '18px', margin: 0 }}>
+            Past Medical History & Document Vault Timeline ({pastHistory.length})
+          </h3>
+        </div>
+
+        {pastHistory.length === 0 ? (
+          <p style={{ color: 'var(--muted)', fontSize: '14px', margin: 0 }}>
+            No past medical documents uploaded to vault yet.
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {pastHistory.map((item, hIdx) => {
+              const filename = typeof item === 'string' ? item : item.filename || 'Clinical Document';
+              const docType = typeof item === 'object' && item.type ? item.type : 'RECORD';
+              const dateStr = typeof item === 'object' && item.date ? item.date : '';
+              const doctor = typeof item === 'object' && item.doctor ? item.doctor : '';
+              const clinic = typeof item === 'object' && item.clinic ? item.clinic : '';
+              const summary = typeof item === 'object' && item.summary ? item.summary : '';
+              const diags = typeof item === 'object' && Array.isArray(item.diagnoses) ? item.diagnoses : [];
+
+              return (
+                <div
+                  key={hIdx}
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid var(--border)',
+                    borderRadius: '14px',
+                    padding: '14px 18px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span
+                          style={{
+                            background: docType === 'PRESCRIPTION' ? '#f3e8ff' : '#ecfdf5',
+                            color: docType === 'PRESCRIPTION' ? '#6b21a8' : '#065f46',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                          }}
+                        >
+                          {docType}
+                        </span>
+                        <strong style={{ fontSize: '14px', color: '#0f172a' }}>{filename}</strong>
+                      </div>
+                      {(doctor || clinic) && (
+                        <p style={{ margin: '2px 0 4px', fontSize: '13px', color: 'var(--muted)' }}>
+                          {[doctor, clinic].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                      {summary && (
+                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#334155' }}>
+                          {formatClinicalItem(summary)}
+                        </p>
+                      )}
+                      {diags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                          {diags.map((d, dIdx) => (
+                            <span
+                              key={dIdx}
+                              style={{
+                                background: '#e0f2fe',
+                                color: '#0369a1',
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {formatClinicalItem(d)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {dateStr && (
+                      <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 700 }}>
+                        {dateStr}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Dual-Standard Terminology Search & Code Assistant */}

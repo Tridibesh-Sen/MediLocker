@@ -4,6 +4,7 @@ import { authenticate } from '../../middlewares/auth';
 
 const router = Router();
 
+router.get('/', authenticate, TodoController.getToday);
 router.get('/today', authenticate, TodoController.getToday);
 router.patch('/:id/toggle', authenticate, TodoController.toggleTask);
 router.post('/daily-feeling', authenticate, TodoController.logFeeling);
