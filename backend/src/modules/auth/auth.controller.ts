@@ -25,8 +25,8 @@ export class AuthController {
 
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, medilockerId, identifier, role, mpin } = loginSchema.parse(req.body);
-      const result = await AuthService.login({ email, medilockerId, identifier, role, mpin });
+      const { email, medilockerId, identifier, role, mpin, password } = loginSchema.parse(req.body);
+      const result = await AuthService.login({ email, medilockerId, identifier, role, mpin, password });
       res.status(200).json({ success: true, ...result });
     } catch (error) {
       next(error);

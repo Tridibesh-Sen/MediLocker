@@ -5,59 +5,59 @@ import { cacheService } from '../../utils/cache';
 
 export class TimelineService {
   /**
-   * Get patient chronological timeline events (Accelerated with cache)
+   * Get patient chronological timeline events (Accelerated with SWR cache)
    */
   static async getPatientTimeline(patientUserId: string) {
     const cacheKey = `timeline:${patientUserId}`;
-    const cached = await cacheService.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
 
-    const events = await prisma.timelineEvent.findMany({
-      where: { patientId: patientUserId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        record: true,
-        prescribedMeds: true,
+    const { data } = await cacheService.fetchOrCompute(
+      cacheKey,
+      async () => {
+        const events = await prisma.timelineEvent.findMany({
+          where: { patientId: patientUserId },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            record: true,
+            prescribedMeds: true,
+          },
+        });
+
+        const feelingLogs = await prisma.dailyFeelingLog.findMany({
+          where: { patientId: patientUserId },
+          orderBy: { logDate: 'desc' },
+          take: 30,
+        });
+
+        return {
+          timeline: events.map((e) => ({
+            id: e.id,
+            eventDateDdmmyyyy: e.eventDateDdmmyyyy,
+            doctorName: e.doctorName,
+            clinicName: e.clinicName,
+            diagnoses: e.diagnoses,
+            allergiesDetected: e.allergiesDetected,
+            clinicalTestsDue: e.clinicalTestsDue,
+            clinicalSummary: e.clinicalSummary,
+            prescribedMedications: e.prescribedMeds,
+            sourceDocument: {
+              id: e.record.id,
+              filename: e.record.originalFilename,
+              mimeType: e.record.mimeType,
+              documentType: e.record.documentType,
+            },
+          })),
+          symptomSynopsis: feelingLogs.map((f) => ({
+            date: f.logDate.toISOString().split('T')[0],
+            severityColor: f.severityColor, // GREEN, ORANGE, RED
+            feelingScore: f.feelingScore,
+            feedback: f.patientFeedback,
+          })),
+        };
       },
-    });
+      { ttlSeconds: 180, swrGraceSeconds: 60 }
+    );
 
-    const feelingLogs = await prisma.dailyFeelingLog.findMany({
-      where: { patientId: patientUserId },
-      orderBy: { logDate: 'desc' },
-      take: 30,
-    });
-
-    const result = {
-      timeline: events.map((e) => ({
-        id: e.id,
-        eventDateDdmmyyyy: e.eventDateDdmmyyyy,
-        doctorName: e.doctorName,
-        clinicName: e.clinicName,
-        diagnoses: e.diagnoses,
-        allergiesDetected: e.allergiesDetected,
-        clinicalTestsDue: e.clinicalTestsDue,
-        clinicalSummary: e.clinicalSummary,
-        prescribedMedications: e.prescribedMeds,
-        sourceDocument: {
-          id: e.record.id,
-          filename: e.record.originalFilename,
-          mimeType: e.record.mimeType,
-          documentType: e.record.documentType,
-        },
-      })),
-      symptomSynopsis: feelingLogs.map((f) => ({
-        date: f.logDate.toISOString().split('T')[0],
-        severityColor: f.severityColor, // GREEN, ORANGE, RED
-        feelingScore: f.feelingScore,
-        feedback: f.patientFeedback,
-      })),
-    };
-
-    cacheService.set(cacheKey, result, 300);
-
-    return result;
+    return data;
   }
 
   /**
@@ -109,8 +109,7 @@ export class TimelineService {
       });
     }
 
-    cacheService.del(`timeline:${userId}`);
-    cacheService.del(`records:${userId}`);
+    await cacheService.invalidateUserAll(userId);
 
     return { message: 'Timeline event deleted successfully.' };
   }

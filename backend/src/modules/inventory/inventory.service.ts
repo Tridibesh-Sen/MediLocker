@@ -3,6 +3,7 @@ import { prisma } from '../../database/prisma';
 import { AIService } from '../ai/ai.service';
 import { AppError } from '../../middlewares/errorHandler';
 import { logger } from '../../utils/logger';
+import { cacheService } from '../../utils/cache';
 
 const barcodePharmaCatalog: Record<string, { name: string; salt: string; dosage: string; category: string }> = {
   '8901234567890': { name: 'Dolo 650', salt: 'Paracetamol', dosage: '650mg', category: 'Antipyretic / Pain Relief' },
@@ -57,6 +58,7 @@ export class InventoryService {
       },
     });
 
+    await cacheService.invalidatePrefix(`inventory:${userId}`);
     logger.info(`Refill tracker established for user ${userId}, med: ${med.medicineName}, alertDate: ${alertDate.toISOString()}`);
 
     return reminder;
@@ -96,13 +98,20 @@ export class InventoryService {
   }
 
   /**
-   * List Home Supplies Cabinet
+   * List Home Supplies Cabinet (Cached with SWR)
    */
   static async listHomeSupplies(userId: string) {
-    return prisma.medicineInventoryHome.findMany({
-      where: { patientId: userId },
-      orderBy: { addedAt: 'desc' },
-    });
+    const cacheKey = `inventory:${userId}`;
+    const { data } = await cacheService.fetchOrCompute(
+      cacheKey,
+      () =>
+        prisma.medicineInventoryHome.findMany({
+          where: { patientId: userId },
+          orderBy: { addedAt: 'desc' },
+        }),
+      { ttlSeconds: 180, swrGraceSeconds: 60 }
+    );
+    return data;
   }
 
   /**
@@ -150,6 +159,7 @@ export class InventoryService {
       },
     });
 
+    await cacheService.invalidatePrefix(`inventory:${userId}`);
     logger.info(`Home supply added for user ${userId}: ${created.medicineName} (${created.aiCategory})`);
 
     return created;

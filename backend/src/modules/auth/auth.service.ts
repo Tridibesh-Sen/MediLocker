@@ -44,8 +44,9 @@ export class AuthService {
     }
 
     let mpinHash: string | null = null;
-    if (data.mpin) {
-      mpinHash = await argon2.hash(data.mpin, {
+    const rawSecret = data.mpin || data.password;
+    if (rawSecret) {
+      mpinHash = await argon2.hash(String(rawSecret), {
         type: argon2.argon2id,
         memoryCost: 2 ** 16,
         timeCost: 3,
@@ -53,35 +54,54 @@ export class AuthService {
       });
     }
 
+    const normalizedRole = String(data.role || 'PATIENT').toUpperCase() as UserRole;
+
     const user = await prisma.user.create({
       data: {
         medilockerId: unitId,
-        email: data.email.toLowerCase(),
-        phone: data.phone,
-        role: data.role,
+        email: cleanEmail,
+        phone: String(data.phone || ''),
+        role: normalizedRole,
         mpinHash,
-        isVerified: data.role === UserRole.PATIENT,
+        isVerified: normalizedRole === UserRole.PATIENT,
       },
     });
 
-    if (data.role === UserRole.PATIENT) {
+    if (normalizedRole === UserRole.PATIENT) {
+      const allergiesStr = Array.isArray(data.baselineAllergies)
+        ? data.baselineAllergies.filter(Boolean).join(', ')
+        : (data.baselineAllergies || data.allergy || data.allergies || null);
+      const medsStr = Array.isArray(data.baselineMedications)
+        ? data.baselineMedications.filter(Boolean).join(', ')
+        : (data.baselineMedications || data.medications || null);
+      const historyStr = Array.isArray(data.chronicConditions)
+        ? data.chronicConditions.filter(Boolean).join(', ')
+        : (data.medicalHistory || data.history || null);
+      const emContactName = data.emergencyContactName ||
+        (Array.isArray(data.emergencyContacts) && data.emergencyContacts[0]?.name) ||
+        (typeof data.emergency === 'string' && !/^\+?[\d\s-]{7,}$/.test(data.emergency) ? data.emergency : 'Emergency Contact');
+      const emContactPhone = data.emergencyContactPhone ||
+        (Array.isArray(data.emergencyContacts) && data.emergencyContacts[0]?.phone) ||
+        data.emergencyContact ||
+        (typeof data.emergency === 'string' && /^\+?[\d\s-]{7,}$/.test(data.emergency) ? data.emergency : null);
+
       await prisma.patientProfile.create({
         data: {
           userId: user.id,
           fullName: data.fullName || data.name || 'Patient',
           dob: data.dob ? new Date(data.dob) : null,
-          gender: data.gender,
-          bloodGroup: data.bloodGroup || data.blood,
-          insuranceProvider: data.insuranceProvider || data.insurance,
-          baselineAllergies: data.baselineAllergies || data.allergy,
-          baselineMedications: data.baselineMedications || data.medications,
-          medicalHistory: data.medicalHistory || data.history,
-          emergencyContactName: data.emergencyContactName || data.emergency,
-          emergencyContactPhone: data.emergencyContactPhone,
-          addressLine: data.addressLine || data.address,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
+          gender: data.gender || 'Not specified',
+          bloodGroup: data.bloodGroup || data.blood || 'Not specified',
+          insuranceProvider: data.insuranceProvider || data.insurance || null,
+          baselineAllergies: allergiesStr,
+          baselineMedications: medsStr,
+          medicalHistory: historyStr,
+          emergencyContactName: emContactName,
+          emergencyContactPhone: emContactPhone,
+          addressLine: data.addressLine || data.address || null,
+          city: data.city || null,
+          state: data.state || null,
+          pincode: data.pincode || null,
         },
       });
     } else if (data.role === UserRole.DOCTOR) {
@@ -162,23 +182,11 @@ export class AuthService {
       { expiresIn: env.JWT_EXPIRES_IN as any }
     );
 
+    const fullUser = await AuthService.getMe(user.id);
+
     return {
       token,
-      user: {
-        id: user.id,
-        medilockerId: user.medilockerId,
-        email: user.email,
-        name: data.name,
-        role: user.role.toLowerCase(),
-        bloodGroup: data.blood,
-        allergies: data.allergy ? [data.allergy] : [],
-        chronicConditions: data.history ? [data.history] : [],
-        emergencyContact: {
-          name: data.emergency || 'Emergency Contact',
-          phone: data.emergencyPhone || data.phone,
-          relation: 'Family',
-        }
-      },
+      user: fullUser,
       message: 'Account created successfully.',
     };
   }
@@ -219,7 +227,7 @@ export class AuthService {
    * Authenticate via Email + Unit ID
    */
   static async login(
-    params: { email?: string; medilockerId?: string; identifier?: string; role?: any; mpin?: string } | string,
+    params: { email?: string; medilockerId?: string; identifier?: string; role?: any; mpin?: string; password?: string } | string,
     roleParam?: any,
     mpinParam?: string
   ) {
@@ -227,6 +235,7 @@ export class AuthService {
     let medilockerId = '';
     let roleUpper: UserRole = UserRole.PATIENT;
     let mpin: string | undefined;
+    let password: string | undefined;
 
     if (typeof params === 'object') {
       email = String(params.email || '').trim().toLowerCase();
@@ -234,6 +243,7 @@ export class AuthService {
       const identifier = String(params.identifier || '').trim();
       roleUpper = String(params.role || 'PATIENT').toUpperCase() as UserRole;
       mpin = params.mpin;
+      password = params.password;
 
       if (!email && identifier.includes('@')) {
         email = identifier.toLowerCase();
@@ -245,16 +255,14 @@ export class AuthService {
       const cleanId = String(params || '').trim();
       if (cleanId.includes('@')) {
         email = cleanId.toLowerCase();
-      } else if (cleanId.toUpperCase().startsWith('ML-')) {
-        medilockerId = cleanId.toUpperCase();
       } else {
-        email = cleanId.toLowerCase();
+        medilockerId = cleanId.toUpperCase();
       }
       roleUpper = String(roleParam || 'PATIENT').toUpperCase() as UserRole;
       mpin = mpinParam;
     }
 
-    let user: any = null;
+    let user;
 
     if (email && medilockerId) {
       const userByEmail = await prisma.user.findUnique({
@@ -308,12 +316,13 @@ export class AuthService {
     }
 
     if (user.mpinHash) {
-      if (!mpin) {
-        throw new AppError('6-digit MPIN is required for this account.', 401);
+      const candidateSecret = mpin || password;
+      if (!candidateSecret) {
+        throw new AppError('Password or 6-digit MPIN is required for this account.', 401);
       }
-      const isMpinValid = await argon2.verify(user.mpinHash, mpin);
+      const isMpinValid = await argon2.verify(user.mpinHash, candidateSecret);
       if (!isMpinValid) {
-        throw new AppError('Invalid 6-digit MPIN.', 401);
+        throw new AppError('Invalid password or 6-digit MPIN.', 401);
       }
     }
 
@@ -665,6 +674,7 @@ export class AuthService {
           city: data.city || user.patientProfile?.city,
           state: data.state || user.patientProfile?.state,
           pincode: data.pincode || user.patientProfile?.pincode,
+          gender: data.gender !== undefined ? data.gender : user.patientProfile?.gender,
           insuranceProvider: data.insuranceProvider || data.insurance || user.patientProfile?.insuranceProvider,
           govidEncrypted: data.govid || user.patientProfile?.govidEncrypted,
         },
@@ -672,6 +682,7 @@ export class AuthService {
           userId,
           fullName: data.fullName || data.name || user.email.split('@')[0],
           dob: data.dob ? new Date(data.dob) : null,
+          gender: data.gender || 'Not specified',
           bloodGroup: data.bloodGroup || 'Not specified',
           baselineAllergies: allergiesStr,
           baselineMedications: medsStr,

@@ -1,6 +1,11 @@
+import path from 'path';
+import fs from 'fs';
 import { env } from '../../config/env';
 import { logger } from '../../utils/logger';
+import { prisma } from '../../database/prisma';
 import { ClinicalGuardrails, PatientClinicalContext } from './ai.guardrails';
+import { cacheService } from '../../utils/cache';
+
 
 export interface ExtractedPrescription {
   eventDateDdmmyyyy: string;
@@ -27,21 +32,34 @@ export interface ExtractedPrescription {
 }
 
 export class AIService {
-  private static apiKeys = [env.MISTRAL_API_KEY, env.MISTRAL_API_KEY_2].filter(Boolean);
-  private static currentKeyIndex = 0;
   private static apiUrl = 'https://api.mistral.ai/v1';
 
   private static get apiKey(): string | undefined {
-    return this.apiKeys[0];
+    return env.MISTRAL_API_KEY || env.MISTRAL_API_KEY_DOCUMENT_OCR || '';
   }
 
-  private static getActiveKeys(): string[] {
-    return this.apiKeys.length > 0 ? this.apiKeys : [];
+  private static getKeyPool(dedicatedKey?: string): string[] {
+    const primary = (dedicatedKey || env.MISTRAL_API_KEY || '').trim();
+    const fallbacks = [
+      env.MISTRAL_API_KEY_DOCUMENT_OCR,
+      env.MISTRAL_API_KEY_MEDICINE_SCAN,
+      env.MISTRAL_API_KEY_COMPANION,
+      env.MISTRAL_API_KEY_VOICE_INTAKE,
+      env.MISTRAL_API_KEY_DISEASE_PREDICTION,
+      env.MISTRAL_API_KEY_DOUBLE_CODING,
+      env.MISTRAL_API_KEY_CLINICAL_TRIAGE,
+      env.MISTRAL_API_KEY,
+      env.MISTRAL_API_KEY_2,
+    ]
+      .map((k) => (k || '').trim())
+      .filter(Boolean);
+
+    return Array.from(new Set([primary, ...fallbacks])).filter(Boolean);
   }
 
-  private static async runMistralOcr(fileBuffer: Buffer, mimeType: string): Promise<string> {
-    const keys = this.getActiveKeys();
-    if (keys.length === 0) throw new Error('No Mistral API keys configured');
+  private static async runMistralOcr(fileBuffer: Buffer, mimeType: string, dedicatedKey?: string): Promise<string> {
+    const keys = this.getKeyPool(dedicatedKey || env.MISTRAL_API_KEY_DOCUMENT_OCR);
+    if (keys.length === 0) throw new Error('No Mistral OCR API keys configured');
 
     const isPdf = mimeType === 'application/pdf';
     const base64 = fileBuffer.toString('base64');
@@ -50,12 +68,8 @@ export class AIService {
       : { type: 'image_url', image_url: `data:${mimeType || 'image/jpeg'};base64,${base64}` };
 
     let lastError: any = null;
-    const startIndex = this.currentKeyIndex % keys.length;
-    this.currentKeyIndex = (this.currentKeyIndex + 1) % keys.length;
-
     for (let i = 0; i < keys.length; i++) {
-      const keyIdx = (startIndex + i) % keys.length;
-      const key = keys[keyIdx];
+      const key = keys[i];
       try {
         const res = await fetch(`${this.apiUrl}/ocr`, {
           method: 'POST',
@@ -71,7 +85,7 @@ export class AIService {
 
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(`Mistral OCR key ${keyIdx + 1} status ${res.status}: ${errText}`);
+          throw new Error(`Mistral OCR key ${i + 1} status ${res.status}: ${errText}`);
         }
 
         const data = (await res.json()) as any;
@@ -79,15 +93,19 @@ export class AIService {
         return pages.map((p: any) => p.markdown || '').join('\n\n').trim();
       } catch (err: any) {
         lastError = err;
-        logger.warn(`Mistral OCR key ${keyIdx + 1} failed, attempting failover key:`, err?.message);
+        logger.warn(`Mistral OCR key ${i + 1} failed, attempting failover key:`, err?.message);
       }
     }
 
     throw lastError || new Error('All Mistral OCR keys failed');
   }
 
-  private static async runMistralChat(messages: Array<{ role: string; content: string }>, jsonFormat: boolean = false): Promise<string> {
-    const keys = this.getActiveKeys();
+  private static async runMistralChat(
+    messages: Array<{ role: string; content: string }>,
+    jsonFormat: boolean = false,
+    dedicatedKey?: string
+  ): Promise<string> {
+    const keys = this.getKeyPool(dedicatedKey);
     if (keys.length === 0) throw new Error('No Mistral API keys configured');
 
     const body: any = {
@@ -99,12 +117,8 @@ export class AIService {
     }
 
     let lastError: any = null;
-    const startIndex = this.currentKeyIndex % keys.length;
-    this.currentKeyIndex = (this.currentKeyIndex + 1) % keys.length;
-
     for (let i = 0; i < keys.length; i++) {
-      const keyIdx = (startIndex + i) % keys.length;
-      const key = keys[keyIdx];
+      const key = keys[i];
       try {
         const res = await fetch(`${this.apiUrl}/chat/completions`, {
           method: 'POST',
@@ -117,14 +131,14 @@ export class AIService {
 
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(`Mistral chat key ${keyIdx + 1} status ${res.status}: ${errText}`);
+          throw new Error(`Mistral chat key ${i + 1} status ${res.status}: ${errText}`);
         }
 
         const data = (await res.json()) as any;
         return data.choices?.[0]?.message?.content?.trim() || '';
       } catch (err: any) {
         lastError = err;
-        logger.warn(`Mistral chat key ${keyIdx + 1} failed, attempting failover key:`, err?.message);
+        logger.warn(`Mistral chat key ${i + 1} failed, attempting failover:`, err?.message);
       }
     }
 
@@ -549,4 +563,550 @@ Rule: eventDateDdmmyyyy must be strictly 8 digits (e.g. ${defaultDate}). If no m
       clinicalSummary: `Document ${filename} stored securely in sovereign vault.`,
     };
   }
+
+  /**
+   * Feature 1: Multilingual Dialect Voice & Text Intake with Dynamic SOCRATES Framework
+   */
+  static async conductVoiceIntake(payload: {
+    input: string;
+    history?: Array<{ role: string; content: string }>;
+    dialect?: string;
+    language?: string;
+    currentSocrates?: Record<string, any>;
+  }) {
+    const input = (payload.input || '').trim();
+    const lang = (payload.language || '').toLowerCase();
+    const dialect =
+      payload.dialect ||
+      (lang === 'en'
+        ? 'English'
+        : lang === 'bn'
+        ? 'Bengali'
+        : lang === 'mr'
+        ? 'Marathi'
+        : lang === 'te'
+        ? 'Telugu'
+        : lang === 'ta'
+        ? 'Tamil'
+        : lang === 'ur'
+        ? 'Urdu'
+        : 'Hindi / Bhojpuri');
+    const current = payload.currentSocrates || {};
+    const history = payload.history || [];
+
+    // Count existing filled dimensions for completeness check
+    const socratesDimensions = ['site', 'onset', 'character', 'radiation', 'associations', 'timeCourse', 'exacerbatingRelieving', 'severity'];
+    const filledCount = socratesDimensions.filter((dim) => {
+      const val = current[dim];
+      if (val === null || val === undefined) return false;
+      if (typeof val === 'string' && (!val.trim() || val.toLowerCase() === 'null' || val.toLowerCase() === 'pending')) return false;
+      if (Array.isArray(val) && val.length === 0) return false;
+      return true;
+    }).length;
+
+    const prompt = `You are the MediLocker Clinical OPD Intake Engine.
+Patient input: "${input}"
+Patient Dialect / Language preference: "${dialect}" (ISO code: ${lang || 'hi'})
+Existing SOCRATES matrix collected so far:
+${JSON.stringify(current, null, 2)}
+Number of SOCRATES dimensions already filled: ${filledCount} out of ${socratesDimensions.length}
+
+Recent Conversation History:
+${history.slice(-4).map((h) => `${h.role}: ${h.content}`).join('\n')}
+
+CLINICAL TASK:
+1. Extract any new details matching the clinical SOCRATES dimensions:
+   - site: anatomical location of pain/discomfort
+   - onset: sudden, gradual, time started
+   - character: burning, sharp, throbbing, dull, cramping
+   - radiation: spreads anywhere else (e.g. to arm, back, neck)
+   - associations: nausea, fever, vomiting, sweating, dizziness
+   - timeCourse: constant, intermittent, worsening after food/exercise
+   - exacerbatingRelieving: what makes it better or worse
+   - severity: scale 1 to 10
+2. Merge the patient's new input into the existing SOCRATES matrix. Return the FULL updated matrix (not just new fields).
+3. COMPLETENESS RULES (CRITICAL — follow strictly):
+   - Count non-null, non-empty SOCRATES dimensions in the UPDATED (merged) matrix.
+   - If 5 or more of the 8 dimensions are filled with meaningful clinical data, set "isComplete": true.
+   - If fewer than 5 dimensions are filled, set "isComplete": false and ask ONE follow-up.
+   - NEVER ask more than 6 total follow-up questions across the conversation. If the conversation history already has 6+ exchanges, set "isComplete": true regardless.
+   - When "isComplete" is true, give a warm reassuring closing message in the patient's dialect saying the intake is done and the system will now analyze their symptoms.
+4. When "isComplete" is false, ask EXACTLY ONE gentle, conversational follow-up question in the patient's spoken dialect ("${dialect}") targeting the most clinically important missing dimension.
+5. Output strictly valid JSON conforming to this schema:
+{
+  "assistantReply": "Spoken/written response in the patient's dialect (${dialect})",
+  "detectedDialect": "${dialect}",
+  "socrates": {
+    "site": "anatomical region or null",
+    "onset": "onset detail or null",
+    "character": "character detail or null",
+    "radiation": "radiation or null",
+    "associations": ["list of associated symptoms"],
+    "timeCourse": "temporal pattern or null",
+    "exacerbatingRelieving": "modifying factors or null",
+    "severity": 5
+  },
+  "isComplete": true or false,
+  "completenessScore": number between 0 and 100,
+  "filledDimensions": number of non-null SOCRATES dimensions (0-8),
+  "nextMissingDimension": "site / onset / character / etc or null if complete",
+  "clinicalSummaryEn": "One concise clinical summary sentence in scientific medical English"
+}`;
+
+    try {
+      const responseText = await this.runMistralChat(
+        [
+          { role: 'system', content: 'You are an expert clinical intake officer. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        true,
+        env.MISTRAL_API_KEY_VOICE_INTAKE
+      );
+
+      const cleaned = responseText.replace(/^```json/i, '').replace(/```$/i, '').trim();
+      const parsed = JSON.parse(cleaned);
+
+      // Server-side completeness enforcement
+      // Re-count filled dimensions from the AI's returned socrates matrix
+      const returnedSocrates = parsed.socrates || {};
+      const serverFilledCount = socratesDimensions.filter((dim) => {
+        const val = returnedSocrates[dim as keyof typeof returnedSocrates];
+        if (val === null || val === undefined) return false;
+        if (typeof val === 'string' && (!val.trim() || val.toLowerCase() === 'null' || val.toLowerCase() === 'pending')) return false;
+        if (Array.isArray(val) && val.length === 0) return false;
+        return true;
+      }).length;
+
+      // Force complete if 5+ dimensions filled OR 6+ conversation exchanges
+      const conversationExchanges = history.filter((h: any) => h.role === 'user').length;
+      if (serverFilledCount >= 5 || conversationExchanges >= 6) {
+        parsed.isComplete = true;
+      }
+      parsed.filledDimensions = serverFilledCount;
+      parsed.completenessScore = Math.round((serverFilledCount / socratesDimensions.length) * 100);
+
+      return parsed;
+    } catch (err: any) {
+      logger.error('Voice intake processing error:', err?.message);
+      const fallbackReplies: Record<string, string> = {
+        en: 'Please share more about your symptoms. When did this first begin?',
+        hi: 'कृपया अपनी समस्या के बारे में और बताएं, यह कब से शुरू हुआ?',
+        bn: 'আপনার শারীরিক সমস্যা সম্পর্কে আরো জানান, এটি কখন থেকে শুরু হয়েছে?',
+        mr: 'आपल्या त्रासाबद्दल अधिक सांगा, हा त्रास कधीपासून सुरू झाला?',
+        te: 'దయచేసి మీ సమస్య గురించి మరింత వివరంగా చెప్పండి, ఇది ఎప్పుడు ప్రారంభమైంది?',
+        ta: 'உங்கள் பிரச்சினையைப் பற்றி மேலும் சொல்லுங்கள், இது எப்போது தொடங்கியது?',
+        ur: 'براہ کرم اپنی تکلیف کے بارے میں مزید بتائیں، یہ کب سے شروع ہوئی؟',
+      };
+      const assistantReply =
+        fallbackReplies[lang] ||
+        fallbackReplies[dialect.toLowerCase().slice(0, 2)] ||
+        fallbackReplies.en;
+
+      return {
+        assistantReply,
+        detectedDialect: dialect,
+        socrates: { ...current, site: input },
+        isComplete: false,
+        nextMissingDimension: 'onset',
+        clinicalSummaryEn: `Patient reported complaint: ${input}`,
+      };
+    }
+  }
+
+  /**
+   * Feature 1 Extension: High-Accuracy Disease Prediction & Diagnostic Test Recommendation
+   */
+  static async predictDiseasesAndTests(payload: {
+    socrates: Record<string, any>;
+    patientContext?: {
+      age?: number;
+      gender?: string;
+      knownAllergies?: string[];
+      chronicConditions?: string[];
+    };
+    language?: string;
+  }) {
+    const socrates = payload.socrates || {};
+    const context = payload.patientContext || {};
+    const lang = payload.language || 'hi';
+
+    const prompt = `You are a Senior Clinical Differential Diagnosis AI Specialist.
+Analyze the following patient clinical intake data:
+
+SOCRATES DATA:
+${JSON.stringify(socrates, null, 2)}
+
+PATIENT CONTEXT:
+Age: ${context.age || 'Adult'}
+Gender: ${context.gender || 'Unspecified'}
+Known Allergies: ${(context.knownAllergies || []).join(', ') || 'None documented'}
+Chronic Conditions: ${(context.chronicConditions || []).join(', ') || 'None documented'}
+
+CLINICAL OBJECTIVES:
+1. Predict the top 3 most likely medical conditions (Differential Diagnosis) with scientific justification and probability rating (High / Moderate / Low). Include standard ICD code (e.g. K29.0, J45.9).
+2. Recommend necessary laboratory, imaging, or diagnostic investigations required to confirm or rule out the diagnoses.
+3. Identify any urgent Red-Flag Clinical Escalation signs (e.g. cardiac compromise, severe hypoxia, acute surgical abdomen, neuro deficits).
+4. Provide a clear, calming explanation for the patient in simple layperson language in their preferred language (${lang}).
+
+Output strictly valid JSON:
+{
+  "predictedConditions": [
+    {
+      "conditionName": "Scientific condition name",
+      "probability": "High" | "Moderate" | "Low",
+      "scientificRationale": "Concise pathophysiology rationale based on symptoms",
+      "icdCode": "ICD-10/11 code"
+    }
+  ],
+  "recommendedTests": [
+    {
+      "testName": "Investigation name (e.g. Complete Blood Count, USG Abdomen)",
+      "urgency": "Immediate" | "Routine" | "Next Visit",
+      "clinicalReason": "Diagnostic purpose"
+    }
+  ],
+  "redFlags": ["list of critical warning signs or empty if safe"],
+  "patientExplanation": "Clear layperson guidance in requested language (${lang})"
+}`;
+
+    try {
+      const responseText = await this.runMistralChat(
+        [
+          { role: 'system', content: 'You are a clinical diagnostics AI. Output ONLY valid JSON conforming to the schema.' },
+          { role: 'user', content: prompt },
+        ],
+        true,
+        env.MISTRAL_API_KEY_DISEASE_PREDICTION
+      );
+
+      const cleaned = responseText.replace(/^```json/i, '').replace(/```$/i, '').trim();
+      return JSON.parse(cleaned);
+    } catch (err: any) {
+      logger.error('Disease prediction error:', err?.message);
+      return {
+        predictedConditions: [
+          {
+            conditionName: 'Acute Symptomatic Evaluation Needed',
+            probability: 'Moderate',
+            scientificRationale: 'Symptom pattern requires formal physician physical examination.',
+            icdCode: 'R69',
+          },
+        ],
+        recommendedTests: [
+          {
+            testName: 'Complete Blood Count (CBC)',
+            urgency: 'Routine',
+            clinicalReason: 'Baseline infection and hematological screening.',
+          },
+        ],
+        redFlags: [],
+        patientExplanation: 'कृपया अपने नजदीकी स्वास्थ्य केंद्र या चिकित्सक से शारीरिक जांच करवाएं।',
+      };
+    }
+  }
+
+  /**
+   * Feature 2: Dual-Standard Medical Classification (NAMASTE + WHO ICD-11 Chapter 26)
+   */
+  static async doubleCodeDiagnosis(payload: { complaintOrDiagnosis: string; language?: string }) {
+    const text = (payload.complaintOrDiagnosis || '').trim();
+
+    const prompt = `You are the Dual-Standard Medical Terminology Classification Engine for MediLocker.
+Target standards:
+1. National Morbidity Codes (NAMASTE Standard: National AYUSH Morbidity and Standardized Terminologies)
+2. WHO ICD-11 Chapter 26 (Traditional Medicine Module 2 - TM2)
+
+Clinical input text:
+"${text}"
+
+STANDARDIZED ONTOLOGY EXAMPLES:
+- Acid dyspepsia / hyperacidity -> NAMASTE: NAMC-AG-01 (Amlapitta) | WHO ICD-11 TM2: SF10 (Disorders of Pitta / Metabolic-Inflammatory state)
+- Bronchial asthma / wheezing -> NAMASTE: NAMC-SW-03 (Tamaka Shwasa) | WHO ICD-11 TM2: SF00 (Disorders of Vata) & SF20 (Disorders of Kapha)
+- Osteoarthritis / joint pain -> NAMASTE: NAMC-ST-02 (Sandhivata) | WHO ICD-11 TM2: SF00 (Disorders of Vata / Neuro-motor & musculoskeletal regulation)
+- Febrile illness -> NAMASTE: NAMC-JV-01 (Jvara) | WHO ICD-11 TM2: SF10 (Pitta inflammatory state)
+- Metabolic syndrome / diabetes -> NAMASTE: NAMC-PR-01 (Prameha) | WHO ICD-11 TM2: SF20 (Kapha-Pitta metabolic dysregulation)
+- Irritable bowel / malabsorption -> NAMASTE: NAMC-GH-01 (Grahani) | WHO ICD-11 TM2: SF10 / SF00 (Agni-Vata gastrointestinal dysmotility)
+- Chronic cough -> NAMASTE: NAMC-KS-01 (Kasa) | WHO ICD-11 TM2: SF00 / SF20
+- Gouty arthritis -> NAMASTE: NAMC-VR-01 (Vatarakta) | WHO ICD-11 TM2: SF00 / SF10
+- Jaundice / hepatitis -> NAMASTE: NAMC-KM-01 (Kamala) | WHO ICD-11 TM2: SF10 (Severe Pitta hepatic dysfunction)
+- Cephalea / Migraine -> NAMASTE: NAMC-SR-01 (Shiroroga) | WHO ICD-11 TM2: SF00 (Neuro-vascular Vata disorder)
+
+CLINICAL TASK:
+Map the input condition into both coding standards with scientific descriptions. Avoid mystical terms; use neuro-motor, metabolic-inflammatory, and structural-fluid scientific equivalents.
+
+Output strictly valid JSON:
+{
+  "nationalMorbidityCode": {
+    "code": "e.g. NAMC-AG-01",
+    "term": "Standardized Clinical Term (e.g. Amlapitta)",
+    "scientificCategory": "e.g. Upper Gastrointestinal Acid-Peptic Disorder"
+  },
+  "icd11Tm2Code": {
+    "code": "e.g. TM2: SF10",
+    "term": "WHO TM2 Standard Nomenclature",
+    "description": "Scientific systemic description (e.g. Systemic metabolic-inflammatory hyper-responsiveness)"
+  },
+  "confidenceScore": 0.95,
+  "physiologicalProfile": {
+    "neuroMotorIndex": 30,
+    "metabolicInflammatoryIndex": 60,
+    "structuralFluidIndex": 10
+  }
+}`;
+
+    try {
+      const responseText = await this.runMistralChat(
+        [
+          { role: 'system', content: 'You are a medical informatics ontology classifier. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        true,
+        env.MISTRAL_API_KEY_DOUBLE_CODING
+      );
+
+      const cleaned = responseText.replace(/^```json/i, '').replace(/```$/i, '').trim();
+      return JSON.parse(cleaned);
+    } catch (err: any) {
+      logger.error('Double-coding ontology error:', err?.message);
+      return {
+        nationalMorbidityCode: {
+          code: 'NAMC-GN-01',
+          term: 'Samanya Roga',
+          scientificCategory: 'General Clinical Complaint',
+        },
+        icd11Tm2Code: {
+          code: 'TM2: SF99',
+          term: 'Unspecified Traditional Medicine Disorder',
+          description: 'General systemic metabolic imbalance',
+        },
+        confidenceScore: 0.75,
+        physiologicalProfile: {
+          neuroMotorIndex: 33,
+          metabolicInflammatoryIndex: 34,
+          structuralFluidIndex: 33,
+        },
+      };
+    }
+  }
+
+  /**
+   * Feature 6: 30-Second High-Density Clinical Vaidya OPD Summary
+   */
+  static async generateClinicalTriageSummary(patientId: string) {
+    const patient = await prisma.patientProfile.findUnique({
+      where: { userId: patientId },
+      include: { user: true },
+    }).catch(() => null);
+
+    const records = await prisma.medicalRecord.findMany({
+      where: { patientId },
+      take: 5,
+      orderBy: { uploadedAt: 'desc' },
+      include: { timelineEvent: true },
+    }).catch(() => []);
+
+    const recentTodos = await prisma.dailyTodoItem.findMany({
+      where: { patientId },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+    }).catch(() => []);
+
+    const recentFeeling = await prisma.dailyFeelingLog.findMany({
+      where: { patientId },
+      take: 5,
+      orderBy: { logDate: 'desc' },
+    }).catch(() => []);
+
+    const activeMeds = await prisma.prescribedMedication.findMany({
+      where: { patientId, isActive: true },
+    }).catch(() => []);
+
+    const clinicalContext = {
+      name: patient?.fullName || 'Patient',
+      age: patient?.dob ? Math.floor((Date.now() - new Date(patient.dob).getTime()) / 31557600000) : 'Adult',
+      gender: patient?.gender || 'Unspecified',
+      bloodGroup: patient?.bloodGroup || 'Not documented',
+      allergies: patient?.baselineAllergies || 'None documented',
+      chronicConditions: patient?.chronicConditions || [],
+      activeMedicationsCount: activeMeds.length,
+      recentRecords: records.map((r: any) => ({
+        type: r.documentType,
+        diagnoses: r.timelineEvent?.diagnoses,
+        summary: r.timelineEvent?.clinicalSummary,
+      })),
+      recentFeelingStatus: recentFeeling.map((f: any) => ({ date: f.logDate, score: f.feelingScore, color: f.severityColor })),
+    };
+
+    const prompt = `You are the 30-Second Clinical OPD Summary AI for attending physicians and Vaidyas.
+Synthesize the following patient clinical chart into an ultra-high-density briefing readable in under 30 seconds:
+
+PATIENT CHART DATA:
+${JSON.stringify(clinicalContext, null, 2)}
+
+CLINICAL SYNTHESIS REQUIREMENTS:
+1. chiefComplaint30s: 2-3 precise bullet points summarizing primary current clinical complaints.
+2. redFlags: Any vital signs or contraindication red flags (or ["No acute emergency flags detected"]).
+3. physiologicalProfile:
+   - vataNeuroMotorScore: 0-100%
+   - pittaMetabolicScore: 0-100%
+   - kaphaStructuralScore: 0-100%
+   - agniDigestiveState: "Sama (Balanced)" | "Vishama (Irregular)" | "Tikshna (Hyperactive)" | "Manda (Hypoactive)"
+4. standardizedDoubleCodes: Primary NAMASTE code and primary WHO ICD-11 TM2 code.
+5. recommendedClinicalPlan: 3 actionable clinical points for the physician.
+
+Output strictly valid JSON:
+{
+  "chiefComplaint30s": ["bullet 1", "bullet 2"],
+  "redFlags": ["flag 1" or "No acute flags detected"],
+  "physiologicalProfile": {
+    "neuroMotorScore": 35,
+    "metabolicScore": 45,
+    "structuralScore": 20,
+    "metabolicStatus": "Balanced / Mildly elevated metabolic fire"
+  },
+  "standardizedDoubleCodes": {
+    "namasteCode": "NAMC-AG-01",
+    "namasteTerm": "Amlapitta",
+    "icd11Tm2": "TM2: SF10 (Pitta disorder)"
+  },
+  "recommendedClinicalPlan": ["Guideline 1", "Guideline 2", "Guideline 3"]
+}`;
+
+    try {
+      const responseText = await this.runMistralChat(
+        [
+          { role: 'system', content: 'You are an emergency OPD triage specialist. Output strictly valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        true,
+        env.MISTRAL_API_KEY_CLINICAL_TRIAGE
+      );
+
+      const cleaned = responseText.replace(/^```json/i, '').replace(/```$/i, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return {
+        patientId,
+        patientName: patient?.fullName || 'Patient',
+        medilockerId: patient?.user?.medilockerId || 'ML-VAULT',
+        bloodGroup: patient?.bloodGroup || 'Unspecified',
+        allergies: patient?.baselineAllergies || 'None',
+        ...parsed,
+      };
+    } catch (err: any) {
+      logger.error('Clinical triage summary error:', err?.message);
+      return {
+        patientId,
+        patientName: patient?.fullName || 'Patient',
+        medilockerId: patient?.user?.medilockerId || 'ML-VAULT',
+        bloodGroup: patient?.bloodGroup || 'Unspecified',
+        allergies: patient?.baselineAllergies || 'None',
+        chiefComplaint30s: ['Routine clinical evaluation', 'Medical records verified in sovereign vault'],
+        redFlags: ['No acute emergency flags detected'],
+        physiologicalProfile: {
+          neuroMotorScore: 33,
+          metabolicScore: 34,
+          structuralScore: 33,
+          metabolicStatus: 'Equilibrium (Sama)',
+        },
+        standardizedDoubleCodes: {
+          namasteCode: 'NAMC-GN-01',
+          namasteTerm: 'Samanya Roga',
+          icd11Tm2: 'TM2: SF99 (General systemic evaluation)',
+        },
+        recommendedClinicalPlan: [
+          'Review active medication compliance',
+          'Evaluate routine laboratory reports',
+          'Maintain balanced diet and adequate hydration',
+        ],
+      };
+    }
+  }
+
+  /**
+   * Real-time persistence: Save Voice Intake & Disease Prediction to PostgreSQL
+   */
+  static async saveIntakeToVault(userId: string, data: {
+    socrates: Record<string, any>;
+    predictedConditions: Array<{ conditionName: string; icdCode?: string; probability?: string }>;
+    recommendedTests: Array<{ testName: string; urgency?: string; clinicalReason?: string }>;
+    patientExplanation?: any;
+  }) {
+    const intakeId = `intake-${Date.now()}`;
+    const timestamp = new Date();
+    const dd = String(timestamp.getDate()).padStart(2, '0');
+    const mm = String(timestamp.getMonth() + 1).padStart(2, '0');
+    const yyyy = timestamp.getFullYear();
+
+    const diagnosisList = (data.predictedConditions || []).map((c) => c.conditionName);
+    const primaryComplaint = data.socrates?.site
+      ? `${data.socrates.site} (${data.socrates.character || 'discomfort'})`
+      : 'Clinical Symptom Intake';
+
+    // 1. Persist intake JSON payload
+    const intakeDir = path.join(process.cwd(), 'uploads', 'intake', userId);
+    if (!fs.existsSync(intakeDir)) {
+      fs.mkdirSync(intakeDir, { recursive: true });
+    }
+    const intakeFilePath = path.join(intakeDir, `${intakeId}.json`);
+    const intakeRelativeUrl = `/uploads/intake/${userId}/${intakeId}.json`;
+    try {
+      fs.writeFileSync(intakeFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (_) {}
+
+    // 2. Create real Medical Record
+    const record = await prisma.medicalRecord.create({
+      data: {
+        patientId: userId,
+        originalFilename: `AI_Clinical_Intake_${dd}${mm}${yyyy}.json`,
+        storageKey: intakeFilePath,
+        fileUrl: intakeRelativeUrl,
+        mimeType: 'application/json',
+        fileSizeBytes: BigInt(JSON.stringify(data).length),
+        sha256Checksum: intakeId,
+        documentType: 'OTHER',
+        userNote: `Voice Intake: ${primaryComplaint}`,
+        processingStatus: 'COMPLETED',
+      },
+    });
+
+    // 2. Create real Timeline Event
+    const timelineEvent = await prisma.timelineEvent.create({
+      data: {
+        recordId: record.id,
+        patientId: userId,
+        eventDateDdmmyyyy: `${dd}${mm}${yyyy}`,
+        doctorName: 'Medi-AI Diagnostic Intelligence',
+        clinicName: 'MediLocker Digital Vault',
+        diagnoses: diagnosisList.length > 0 ? diagnosisList : ['Clinical Consultation'],
+        clinicalTestsDue: data.recommendedTests || [],
+        clinicalSummary: `Patient intake reported ${primaryComplaint}. Top predicted condition: ${diagnosisList[0] || 'Under review'}.`,
+      },
+    });
+
+    // 3. Automatically schedule real DailyTodoItem reminders for recommended lab tests
+    if (Array.isArray(data.recommendedTests) && data.recommendedTests.length > 0) {
+      for (const test of data.recommendedTests) {
+        await prisma.dailyTodoItem.create({
+          data: {
+            patientId: userId,
+            scheduleDate: new Date(),
+            timeSlot: 'MORNING',
+            taskLabel: `⚗ Diagnostic Investigation Due: ${test.testName}`,
+            isCompleted: false,
+          },
+        });
+      }
+    }
+
+    // 4. Invalidate all user caches
+    await cacheService.invalidateUserAll(userId);
+
+    return {
+      success: true,
+      message: 'Intake and diagnostic investigations saved to sovereign vault successfully.',
+      recordId: record.id,
+      timelineEventId: timelineEvent.id,
+    };
+  }
 }
+

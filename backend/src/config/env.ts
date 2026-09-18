@@ -11,9 +11,16 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:5432/medilocker?sslmode=disable'),
 
-  // AI (Mistral multi-key pool)
+  // AI (Mistral multi-key pool with dedicated feature keys)
   MISTRAL_API_KEY: z.string().default(''),
   MISTRAL_API_KEY_2: z.string().default(''),
+  MISTRAL_API_KEY_DOCUMENT_OCR: z.string().default(''),
+  MISTRAL_API_KEY_MEDICINE_SCAN: z.string().default(''),
+  MISTRAL_API_KEY_COMPANION: z.string().default(''),
+  MISTRAL_API_KEY_VOICE_INTAKE: z.string().default(''),
+  MISTRAL_API_KEY_DISEASE_PREDICTION: z.string().default(''),
+  MISTRAL_API_KEY_DOUBLE_CODING: z.string().default(''),
+  MISTRAL_API_KEY_CLINICAL_TRIAGE: z.string().default(''),
   GEMINI_API_KEY: z.string().default(''),
 
   // Cloudinary (Optional fallback to local)

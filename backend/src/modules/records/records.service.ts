@@ -72,8 +72,51 @@ export class RecordsService {
       }
     }).catch(() => {});
 
+    // Invalidate user records cache immediately so the newly uploaded file appears in the UI
+    await cacheService.invalidateUserAll(userId);
+
+    // Run AI OCR and extraction asynchronously in background so HTTP response is instant (<400ms)
+    this.processExtractionAsync(
+      record,
+      uploadResult,
+      userId,
+      file.buffer,
+      file.mimetype,
+      file.originalname,
+      note,
+      eventDate,
+      isMedicineStillNeeded
+    ).catch((err) => {
+      logger.error(`Background AI extraction error for record ${record.id}:`, err?.message);
+    });
+
+    return {
+      record: {
+        ...record,
+        fileSizeBytes: record.fileSizeBytes.toString(),
+        url: uploadResult.url,
+      },
+      status: ProcessingStatus.PROCESSING,
+      message: 'Document securely vaulted. AI clinical extraction is processing in the background.',
+    };
+  }
+
+  /**
+   * Asynchronous background extraction worker (Zero UI blocking)
+   */
+  private static async processExtractionAsync(
+    record: any,
+    uploadResult: any,
+    userId: string,
+    fileBuffer: Buffer,
+    mimeType: string,
+    originalFilename: string,
+    note?: string,
+    eventDate?: string,
+    isMedicineStillNeeded?: boolean
+  ) {
     try {
-      const extracted = await AIService.analyzeDocument(file.buffer, file.mimetype, file.originalname, note);
+      const extracted = await AIService.analyzeDocument(fileBuffer, mimeType, originalFilename, note);
 
       let finalEventDate = extracted.eventDateDdmmyyyy;
       if (eventDate) {
@@ -193,42 +236,46 @@ export class RecordsService {
 
       await prisma.medicalRecord.update({
         where: { id: record.id },
-        data: {
-          processingStatus: ProcessingStatus.COMPLETED,
-        },
+        data: { processingStatus: ProcessingStatus.COMPLETED },
       });
 
       logger.info(`Medi-AI extraction completed for record ${record.id}, timeline event ${timelineEvent.id}`);
-
-      cacheService.invalidatePrefix(`records:${userId}`);
-      cacheService.invalidatePrefix(`timeline:${userId}`);
-      cacheService.invalidatePrefix(`todo:today:${userId}`);
-
-      return {
-        record: {
-          ...record,
-          fileSizeBytes: record.fileSizeBytes.toString(),
-          url: uploadResult.url,
-        },
-        timelineEvent,
-      };
+      await cacheService.invalidateUserAll(userId);
     } catch (aiError: any) {
       logger.error(`Medi-AI extraction failed for record ${record.id}:`, aiError?.message);
-
       await prisma.medicalRecord.update({
         where: { id: record.id },
         data: { processingStatus: ProcessingStatus.FAILED },
       });
-
-      return {
-        record: {
-          ...record,
-          fileSizeBytes: record.fileSizeBytes.toString(),
-          url: uploadResult.url,
-        },
-        error: 'Document stored, but clinical extraction experienced an issue.',
-      };
+      await cacheService.invalidateUserAll(userId);
     }
+  }
+
+  /**
+   * Get realtime processing status for an uploaded document
+   */
+  static async getRecordStatus(userId: string, recordId: string) {
+    const record = await prisma.medicalRecord.findFirst({
+      where: { id: recordId, patientId: userId },
+      include: {
+        timelineEvent: {
+          include: { prescribedMeds: true },
+        },
+      },
+    });
+
+    if (!record) {
+      throw new AppError('Medical record not found.', 404);
+    }
+
+    return {
+      id: record.id,
+      processingStatus: record.processingStatus,
+      documentType: record.documentType,
+      originalFilename: record.originalFilename,
+      timelineEvent: record.timelineEvent,
+      uploadedAt: record.uploadedAt,
+    };
   }
 
   /**
@@ -353,8 +400,46 @@ export class RecordsService {
             },
           });
         }
+
+        // Automatic Cross-Module Sync: Stock in Medicine Cabinet & Setup 2-Day Refill Alert
+        try {
+          await prisma.medicineInventoryHome.create({
+            data: {
+              patientId: userId,
+              medicineName: med.medicineName,
+              activeSalt: med.activeSalt || 'Active formula',
+              quantityAvailable: Number(med.totalQuantityNeeded) || 15,
+              expiryDate: new Date(Date.now() + 180 * 86400000),
+              batchNumber: `RX-${Date.now().toString().slice(-4)}`,
+              scanMethod: 'MANUAL',
+              aiCategory: 'Prescribed Course',
+            },
+          });
+
+          const dailyRate = freq.includes('-1-') ? 3 : freq.includes('-1') ? 2 : 1;
+          const daysSupply = Math.floor((Number(med.totalQuantityNeeded) || 15) / dailyRate);
+          const depDate = new Date(Date.now() + daysSupply * 86400000);
+          const alertDate = new Date(depDate.getTime() - 2 * 86400000);
+
+          await prisma.refillReminder.create({
+            data: {
+              patientId: userId,
+              medicationId: createdMed.id,
+              purchasedQuantity: Number(med.totalQuantityNeeded) || 15,
+              remainingQuantity: Number(med.totalQuantityNeeded) || 15,
+              dailyConsumptionRate: dailyRate,
+              estimatedDepletionDate: depDate,
+              alertDate,
+              isAlertTriggered: false,
+              epharmacyLink: `https://www.1mg.com/search/all?name=${encodeURIComponent(med.medicineName)}`,
+            },
+          });
+        } catch (invErr: any) {
+          logger.warn('Auto-stocking prescribed medicine failed:', invErr?.message);
+        }
       }
     }
+
 
     const testsList = data.clinicalTestsDue || data.testsDue || [];
     if (Array.isArray(testsList) && testsList.length > 0) {
@@ -373,9 +458,7 @@ export class RecordsService {
       }
     }
 
-    cacheService.invalidatePrefix(`records:${userId}`);
-    cacheService.invalidatePrefix(`timeline:${userId}`);
-    cacheService.invalidatePrefix(`todo:today:${userId}`);
+    await cacheService.invalidateUserAll(userId);
 
     return {
       record: {
@@ -391,54 +474,54 @@ export class RecordsService {
    */
   static async listRecords(userId: string, filter?: string) {
     const cacheKey = `records:list:${userId}:${filter || 'all'}`;
-    const cached = await cacheService.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
 
-    const where: any = { patientId: userId };
-    if (filter && filter !== 'all') {
-      where.documentType = filter.toUpperCase() as DocumentType;
-    }
+    const { data } = await cacheService.fetchOrCompute(
+      cacheKey,
+      async () => {
+        const where: any = { patientId: userId };
+        if (filter && filter !== 'all') {
+          where.documentType = filter.toUpperCase() as DocumentType;
+        }
 
-    const records = await prisma.medicalRecord.findMany({
-      where,
-      orderBy: { uploadedAt: 'desc' },
-      include: {
-        timelineEvent: {
-          include: { prescribedMeds: true },
-        },
+        const records = await prisma.medicalRecord.findMany({
+          where,
+          orderBy: { uploadedAt: 'desc' },
+          include: {
+            timelineEvent: {
+              include: { prescribedMeds: true },
+            },
+          },
+        });
+
+        return records.map((r) => {
+          const event = r.timelineEvent;
+          const uploadedDdmmyyyy = r.uploadedAt.toLocaleDateString('en-GB').replace(/\//g, '');
+          return {
+            id: r.id,
+            category: r.documentType === 'PRESCRIPTION' ? 'Prescription' : r.documentType === 'REPORT' ? 'Lab Report' : 'Medical Record',
+            dateFormatted: r.uploadedAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            eventDateDdmmyyyy: event?.eventDateDdmmyyyy || uploadedDdmmyyyy,
+            doctorName: event?.doctorName || 'Attending Physician',
+            clinicName: event?.clinicName || 'MediLocker Vault',
+            diagnoses: event?.diagnoses || ['Clinical Record'],
+            clinicalSummary: event?.clinicalSummary || r.userNote || 'Sovereign clinical record.',
+            prescribedMedications: (event?.prescribedMeds || []).map((m) => ({
+              medicineName: m.medicineName,
+              dosage: m.dosage,
+              frequency: m.frequency,
+              timing: m.timingInstruction,
+            })),
+            testsDue: event?.clinicalTestsDue || [],
+            storageKey: r.storageKey,
+            mimeType: r.mimeType,
+            uploadedAt: r.uploadedAt,
+          };
+        });
       },
-    });
+      { ttlSeconds: 180, swrGraceSeconds: 60 }
+    );
 
-    const result = records.map((r) => {
-      const event = r.timelineEvent;
-      const uploadedDdmmyyyy = r.uploadedAt.toLocaleDateString('en-GB').replace(/\//g, '');
-      return {
-        id: r.id,
-        category: r.documentType === 'PRESCRIPTION' ? 'Prescription' : r.documentType === 'REPORT' ? 'Lab Report' : 'Medical Record',
-        dateFormatted: r.uploadedAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        eventDateDdmmyyyy: event?.eventDateDdmmyyyy || uploadedDdmmyyyy,
-        doctorName: event?.doctorName || 'Attending Physician',
-        clinicName: event?.clinicName || 'MediLocker Vault',
-        diagnoses: event?.diagnoses || ['Clinical Record'],
-        clinicalSummary: event?.clinicalSummary || r.userNote || 'Sovereign clinical record.',
-        prescribedMedications: (event?.prescribedMeds || []).map((m) => ({
-          medicineName: m.medicineName,
-          dosage: m.dosage,
-          frequency: m.frequency,
-          timing: m.timingInstruction,
-        })),
-        testsDue: event?.clinicalTestsDue || [],
-        storageKey: r.storageKey,
-        mimeType: r.mimeType,
-        uploadedAt: r.uploadedAt,
-      };
-    });
-
-    cacheService.set(cacheKey, result, 300);
-
-    return result;
+    return data;
   }
 
   /**
@@ -474,6 +557,7 @@ export class RecordsService {
         patient: {
           include: { patientProfile: true },
         },
+        timelineEvent: true,
       },
     });
 
@@ -552,9 +636,8 @@ export class RecordsService {
       where: { id: recordId },
     });
 
-    // Invalidate caches
-    cacheService.del(`records:${userId}`);
-    cacheService.del(`timeline:${userId}`);
+    // Invalidate all caches across modules for this user
+    await cacheService.invalidateUserAll(userId);
 
     return { message: 'Medical record deleted successfully.' };
   }

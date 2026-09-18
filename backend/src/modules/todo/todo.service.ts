@@ -83,8 +83,8 @@ export class TodoService {
       },
     };
 
-    // Cache today's tasks for 5 minutes
-    cacheService.set(cacheKey, result, 300);
+    // Cache today's tasks for 5 minutes with SWR
+    cacheService.set(cacheKey, result, 300, 60);
 
     return result;
   }
@@ -109,8 +109,8 @@ export class TodoService {
       },
     });
 
-    // Invalidate cached tasks for this user
-    cacheService.invalidatePrefix(`todo:today:${userId}`);
+    // Invalidate cached tasks for this user across L1 & L2
+    await cacheService.invalidatePrefix(`todo:today:${userId}`);
 
     return updated;
   }
@@ -148,8 +148,11 @@ export class TodoService {
       },
     });
 
-    // Invalidate cached tasks & stats for this user
-    cacheService.invalidatePrefix(`todo:today:${userId}`);
+    // Invalidate cached tasks & stats AND timeline heat strip for this user
+    await Promise.allSettled([
+      cacheService.invalidatePrefix(`todo:today:${userId}`),
+      cacheService.invalidatePrefix(`timeline:${userId}`),
+    ]);
 
     logger.info(`Daily feeling logged for user ${userId}: ${severityColor} (Score: ${feelingScore})`);
 

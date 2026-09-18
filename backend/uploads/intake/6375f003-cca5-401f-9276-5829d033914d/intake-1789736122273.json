@@ -1,0 +1,74 @@
+{
+  "id": "c243f885-2ef3-4fb3-8c00-170908b33b7d",
+  "recordId": "c4ca40fa-4adf-47c7-9cc7-cc3383e8d5c1",
+  "patientId": "6375f003-cca5-401f-9276-5829d033914d",
+  "eventDateDdmmyyyy": "18092026",
+  "doctorName": "Medi-AI Diagnostic Intelligence",
+  "clinicName": "MediLocker Digital Vault",
+  "diagnoses": [
+    "Costochondritis (Anterior Chest Wall Syndrome)",
+    "Anxiety Disorder with Somatic Symptoms (e.g., Panic Attack)",
+    "Early-Stage Mitral Valve Prolapse (MVP) or Functional Heart Disorder",
+    "Gastroesophageal Reflux Disease (GERD) with Atypical Chest Pain"
+  ],
+  "allergiesDetected": [],
+  "clinicalTestsDue": [
+    {
+      "urgency": "Routine",
+      "testName": "Electrocardiogram (ECG) with Stress Test (Treadmill or Pharmacological)",
+      "clinicalReason": "Rule out cardiac ischemia, arrhythmias (e.g., MVP, atrial fibrillation), or functional cardiac disorders. Stress testing evaluates exertional dyspnea and palpitations."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Complete Blood Count (CBC) with Differential",
+      "clinicalReason": "Assess for anemia (could explain dizziness), infection, or inflammatory markers (e.g., costochondritis)."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Basic Metabolic Panel (BMP) + Comprehensive Metabolic Panel (CMP)",
+      "clinicalReason": "Evaluate electrolytes (e.g., hypokalemia/hyponatremia for palpitations), renal/liver function, and glucose (rule out metabolic causes of dizziness)."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Troponin I/T (Cardiac Biomarkers)",
+      "clinicalReason": "Rule out acute myocardial infarction or cardiac injury, especially given chest pain."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "24-Hour Ambulatory ECG Monitoring (Holter Monitor)",
+      "clinicalReason": "Detect intermittent arrhythmias (e.g., palpitations, atrial fibrillation) not captured on resting ECG."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Chest X-Ray (PA/Lateral)",
+      "clinicalReason": "Rule out structural abnormalities (e.g., pneumothorax, aortic dissection), pleural effusion, or costochondral calcification."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Echocardiogram (Transthoracic)",
+      "clinicalReason": "Assess valvular function (e.g., MVP), ventricular function, and pericardial effusion. Gold standard for cardiac structural evaluation."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Anxiety/Depression Screening (e.g., PHQ-9, GAD-7)",
+      "clinicalReason": "Quantify psychological symptoms contributing to somatic complaints (e.g., palpitations, chest pain)."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Upper GI Endoscopy (if GERD suspected)",
+      "clinicalReason": "Confirm or rule out GERD as a cause of atypical chest pain (if symptoms persist after cardiac evaluation)."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Thyroid Function Tests (TSH, Free T4)",
+      "clinicalReason": "Hypothyroidism can cause fatigue, dizziness, and palpitations. Hyperthyroidism may exacerbate anxiety symptoms."
+    },
+    {
+      "urgency": "Routine",
+      "testName": "Blood Gas Analysis (if severe dyspnea persists)",
+      "clinicalReason": "Assess for hypoxia or hypercapnia (e.g., respiratory cause of dizziness)."
+    }
+  ],
+  "clinicalSummary": "Patient intake reported Left side of the chest (precise anatomical location still unclear) (sharp). Top predicted condition: Costochondritis (Anterior Chest Wall Syndrome).",
+  "createdAt": "2026-09-18T12:55:22.652Z"
+}

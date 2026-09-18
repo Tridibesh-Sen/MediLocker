@@ -348,7 +348,7 @@ class MailerService {
 
     // 4. Standard SMTP Transporter (Port 465 / 587)
     if (!this.isConfigured || !this.transporter) {
-      logger.info(`[MAILER DEV MOCK] "${subject}" would be dispatched to ${to}`);
+      logger.info(`[MAILER SIMULATION] SMTP not configured. Email to ${to} bypassed: "${subject}"`);
       return true;
     }
 
