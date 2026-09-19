@@ -264,26 +264,7 @@ export class AuthService {
 
     let user;
 
-    if (email && medilockerId) {
-      const userByEmail = await prisma.user.findUnique({
-        where: { email },
-        include: {
-          patientProfile: true,
-          doctorProfile: true,
-          hospitalProfile: true,
-        },
-      });
-
-      if (!userByEmail) {
-        throw new AppError(`No registered account found with email "${email}". Please verify your email or sign up.`, 401);
-      }
-
-      if (userByEmail.medilockerId.toUpperCase() !== medilockerId.toUpperCase()) {
-        throw new AppError(`Unit ID mismatch: The provided Unit ID (${medilockerId}) does not match the account associated with email ${email}.`, 401);
-      }
-
-      user = userByEmail;
-    } else if (email) {
+    if (email) {
       user = await prisma.user.findUnique({
         where: { email },
         include: {
@@ -293,7 +274,7 @@ export class AuthService {
         },
       });
       if (!user) {
-        throw new AppError(`No registered account found with email "${email}".`, 401);
+        throw new AppError(`No registered account found with email "${email}". Please sign up.`, 401);
       }
     } else if (medilockerId) {
       user = await prisma.user.findUnique({
@@ -308,21 +289,34 @@ export class AuthService {
         throw new AppError(`No registered account found with Unit ID "${medilockerId}".`, 401);
       }
     } else {
-      throw new AppError('Email address and Unique Unit ID are required to sign in.', 400);
+      throw new AppError('Email address or Unique Unit ID is required to sign in.', 400);
     }
 
     if (user.role !== roleUpper) {
       throw new AppError(`This account is registered under the ${user.role} portal. Please select the correct portal tab.`, 403);
     }
 
-    if (user.mpinHash) {
-      const candidateSecret = mpin || password;
-      if (!candidateSecret) {
-        throw new AppError('Password or 6-digit MPIN is required for this account.', 401);
+    // Check authentication credentials: Password OR Unit ID
+    const hasPassword = Boolean(password || mpin);
+    const hasUnitId = Boolean(medilockerId);
+
+    if (!hasPassword && !hasUnitId) {
+      throw new AppError('Please provide either your Password or your Unique Unit ID (ML-XXXX-XXXX) to sign in.', 400);
+    }
+
+    // If Unit ID was provided, verify it matches the user's registered Unit ID
+    if (hasUnitId) {
+      if (user.medilockerId.toUpperCase() !== medilockerId.toUpperCase()) {
+        throw new AppError(`Unit ID mismatch: The provided Unit ID (${medilockerId}) does not match the account associated with email ${user.email}.`, 401);
       }
-      const isMpinValid = await argon2.verify(user.mpinHash, candidateSecret);
-      if (!isMpinValid) {
-        throw new AppError('Invalid password or 6-digit MPIN.', 401);
+    }
+
+    // If Password was provided, verify it with Argon2
+    if (hasPassword && user.mpinHash) {
+      const candidateSecret = String(password || mpin);
+      const isPasswordValid = await argon2.verify(user.mpinHash, candidateSecret);
+      if (!isPasswordValid) {
+        throw new AppError('Invalid password or Security MPIN.', 401);
       }
     }
 

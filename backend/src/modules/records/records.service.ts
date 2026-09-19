@@ -241,6 +241,29 @@ export class RecordsService {
 
       logger.info(`Medi-AI extraction completed for record ${record.id}, timeline event ${timelineEvent.id}`);
       await cacheService.invalidateUserAll(userId);
+
+      // Dispatch confirmation email to patient with AI extraction findings
+      prisma.user.findUnique({
+        where: { id: userId },
+        include: { patientProfile: true },
+      }).then((patientUser) => {
+        if (patientUser?.email) {
+          const diagnosesList = Array.isArray(extracted.diagnoses)
+            ? extracted.diagnoses.map((d: any) => typeof d === 'string' ? d : d.condition || d.diagnosis).filter(Boolean)
+            : [];
+          mailerService.sendPatientRecordUploadedEmail({
+            patientEmail: patientUser.email,
+            patientName: patientUser.patientProfile?.fullName || 'Valued Patient',
+            patientUnitId: patientUser.medilockerId,
+            documentType: record.documentType,
+            originalFilename: record.originalFilename,
+            doctorName: extracted.doctorName || undefined,
+            clinicName: extracted.clinicName || undefined,
+            diagnoses: diagnosesList,
+            medicationsCount: extracted.prescribedMedications?.length || 0,
+          }).catch((err) => logger.warn('Failed to send patient record upload email:', err?.message));
+        }
+      }).catch(() => {});
     } catch (aiError: any) {
       logger.error(`Medi-AI extraction failed for record ${record.id}:`, aiError?.message);
       await prisma.medicalRecord.update({

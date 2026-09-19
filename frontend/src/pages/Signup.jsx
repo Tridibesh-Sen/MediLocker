@@ -25,15 +25,21 @@ export function Signup() {
     registrationNumber: '',
     specialization: 'General Medicine',
     clinicName: '',
+    clinicAddress: '',
     // Hospital specific
     hospitalName: '',
     hospitalRegistrationNumber: '',
+    hospitalType: 'General Hospital',
+    hospitalOwnership: 'PRIVATE',
+    beds: '50',
+    representative: '',
   });
 
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [createdUser, setCreatedUser] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const { signup } = useAuth();
   const navigate = useNavigate();
@@ -43,17 +49,27 @@ export function Signup() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleCopyUnitId = () => {
+    if (createdUser?.medilockerId) {
+      navigator.clipboard.writeText(createdUser.medilockerId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (!consent) {
-      setError('Please agree to the sovereign data storage terms.');
+      setError('Please agree to the sovereign health data storage terms.');
       return;
     }
 
-    if (!formData.fullName || !formData.email || !formData.phone || !formData.password) {
-      setError('Full Name, Email, Phone, and Password are required.');
+    const nameToUse = role === 'hospital' ? (formData.hospitalName || formData.fullName) : formData.fullName;
+
+    if (!nameToUse || !formData.email || !formData.phone || !formData.password) {
+      setError('Name, Email, Phone, and Password are required.');
       return;
     }
 
@@ -62,8 +78,8 @@ export function Signup() {
     try {
       const payload = {
         role: role.toUpperCase(),
-        name: formData.fullName.trim(),
-        fullName: formData.fullName.trim(),
+        name: nameToUse.trim(),
+        fullName: nameToUse.trim(),
         email: formData.email.trim(),
         password: formData.password,
         phone: formData.phone.trim(),
@@ -92,16 +108,25 @@ export function Signup() {
         registrationNumber: formData.registrationNumber || `REG-${Date.now().toString().slice(-6)}`,
         specialization: formData.specialization || 'General Medicine',
         clinicName: formData.clinicName || 'Clinical Workspace',
+        clinicAddress: formData.clinicAddress || formData.address || 'Medical Facility',
         // Hospital
-        hospitalName: formData.hospitalName || formData.fullName.trim(),
+        hospitalName: formData.hospitalName || nameToUse.trim(),
         hospitalId: `HOS-${Date.now().toString().slice(-6)}`,
         license: formData.hospitalRegistrationNumber || `LIC-${Date.now().toString().slice(-6)}`,
         hospitalRegistrationNumber: formData.hospitalRegistrationNumber || `LIC-${Date.now().toString().slice(-6)}`,
+        hospitalType: formData.hospitalType,
+        hospitalOwnership: formData.hospitalOwnership,
+        beds: Number(formData.beds) || 50,
+        representative: formData.representative || undefined,
       };
 
       const res = await signup(payload);
       if (res?.user) {
-        setCreatedUser(res.user);
+        setCreatedUser({
+          ...res.user,
+          email: formData.email.trim(),
+          registeredRole: role,
+        });
       } else {
         navigate('/dashboard');
       }
@@ -177,16 +202,44 @@ export function Signup() {
           <form id="signupForm" onSubmit={handleSubmit}>
             <div className="signup-section">
               <div className="section-kicker">IDENTITY DETAILS</div>
-              <h3>Primary Credentials</h3>
+              <h3>{role === 'hospital' ? 'Hospital Core Details' : 'Primary Credentials'}</h3>
               <div className="form-grid">
+                {role === 'hospital' ? (
+                  <label>
+                    <span>Hospital / Clinic Name *</span>
+                    <input
+                      name="hospitalName"
+                      required
+                      value={formData.hospitalName}
+                      onChange={handleChange}
+                      placeholder="e.g. Apollo Multi-Specialty Hospital"
+                    />
+                  </label>
+                ) : (
+                  <label>
+                    <span>{role === 'doctor' ? "Doctor's Full Name *" : 'Full Name *'}</span>
+                    <input
+                      name="fullName"
+                      required
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      placeholder={role === 'doctor' ? 'e.g. Dr. Priya Sharma' : 'e.g. Ramesh Verma'}
+                    />
+                  </label>
+                )}
+
                 <label>
-                  <span>Full Name *</span>
-                  <input name="fullName" required value={formData.fullName} onChange={handleChange} placeholder="e.g. Ramesh Verma" />
+                  <span>{role === 'hospital' ? 'Official Hospital Email *' : role === 'doctor' ? 'Professional Email *' : 'Email Address *'}</span>
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="you@domain.com"
+                  />
                 </label>
-                <label>
-                  <span>Email Address *</span>
-                  <input name="email" type="email" required value={formData.email} onChange={handleChange} placeholder="ramesh@example.com" />
-                </label>
+
                 <label>
                   <span>Password *</span>
                   <input
@@ -195,40 +248,54 @@ export function Signup() {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Create a strong password"
+                    placeholder="Create a secure password"
+                    autoComplete="new-password"
                   />
                 </label>
+
                 <label>
-                  <span>Phone Number *</span>
-                  <input name="phone" type="tel" required value={formData.phone} onChange={handleChange} placeholder="+91 9876543210" />
+                  <span>{role === 'hospital' ? 'Hospital Contact Phone *' : 'Phone Number *'}</span>
+                  <input
+                    name="phone"
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="+91 9876543210"
+                  />
                 </label>
-                <label>
-                  <span>Date of Birth</span>
-                  <input name="dob" type="date" value={formData.dob} onChange={handleChange} />
-                </label>
-                <label>
-                  <span>Gender</span>
-                  <select name="gender" value={formData.gender} onChange={handleChange}>
-                    <option>Prefer not to say</option>
-                    <option>Female</option>
-                    <option>Male</option>
-                    <option>Other</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Blood Group</span>
-                  <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}>
-                    <option>Not specified</option>
-                    <option>A+</option>
-                    <option>A-</option>
-                    <option>B+</option>
-                    <option>B-</option>
-                    <option>AB+</option>
-                    <option>AB-</option>
-                    <option>O+</option>
-                    <option>O-</option>
-                  </select>
-                </label>
+
+                {role === 'patient' && (
+                  <>
+                    <label>
+                      <span>Date of Birth</span>
+                      <input name="dob" type="date" value={formData.dob} onChange={handleChange} />
+                    </label>
+                    <label>
+                      <span>Gender</span>
+                      <select name="gender" value={formData.gender} onChange={handleChange}>
+                        <option>Prefer not to say</option>
+                        <option>Female</option>
+                        <option>Male</option>
+                        <option>Other</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Blood Group</span>
+                      <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}>
+                        <option>Not specified</option>
+                        <option>A+</option>
+                        <option>A-</option>
+                        <option>B+</option>
+                        <option>B-</option>
+                        <option>AB+</option>
+                        <option>AB-</option>
+                        <option>O+</option>
+                        <option>O-</option>
+                      </select>
+                    </label>
+                  </>
+                )}
               </div>
             </div>
 
@@ -238,21 +305,23 @@ export function Signup() {
                 <h3>Baseline Medical History</h3>
                 <div className="form-grid">
                   <label className="wide">
-                    <span>Known Allergies</span>
+                    <span>Known Allergies (Optional)</span>
                     <textarea
                       name="allergies"
                       value={formData.allergies}
                       onChange={handleChange}
                       placeholder="e.g. Penicillin, Sulfa drugs, Peanuts"
+                      rows="2"
                     />
                   </label>
                   <label className="wide">
-                    <span>Current Regular Medications</span>
+                    <span>Current Regular Medications (Optional)</span>
                     <textarea
                       name="medications"
                       value={formData.medications}
                       onChange={handleChange}
                       placeholder="e.g. Metformin 500mg (1-0-0), Telmisartan 40mg"
+                      rows="2"
                     />
                   </label>
                   <label>
@@ -278,30 +347,115 @@ export function Signup() {
                 <h3>Professional Verification</h3>
                 <div className="form-grid">
                   <label>
-                    <span>Medical Degree</span>
-                    <input name="doctorDegree" value={formData.doctorDegree} onChange={handleChange} placeholder="e.g. MBBS, MD, BAMS" />
+                    <span>Medical Degree *</span>
+                    <input
+                      name="doctorDegree"
+                      required
+                      value={formData.doctorDegree}
+                      onChange={handleChange}
+                      placeholder="e.g. MBBS, MD, MS, BAMS"
+                    />
                   </label>
                   <label>
                     <span>Medical Council Registration No. *</span>
                     <input
                       name="registrationNumber"
+                      required
                       value={formData.registrationNumber}
                       onChange={handleChange}
                       placeholder="e.g. MCI-2024-8891"
                     />
                   </label>
                   <label>
-                    <span>Specialization</span>
+                    <span>Specialization *</span>
                     <input
                       name="specialization"
+                      required
                       value={formData.specialization}
                       onChange={handleChange}
-                      placeholder="e.g. Internal Medicine / Ayurveda"
+                      placeholder="e.g. Cardiology / General Medicine"
                     />
                   </label>
                   <label>
                     <span>Clinic / Hospital Name</span>
-                    <input name="clinicName" value={formData.clinicName} onChange={handleChange} placeholder="e.g. Max Care Clinic" />
+                    <input
+                      name="clinicName"
+                      value={formData.clinicName}
+                      onChange={handleChange}
+                      placeholder="e.g. Max Care Clinic"
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Clinic Address</span>
+                    <input
+                      name="clinicAddress"
+                      value={formData.clinicAddress}
+                      onChange={handleChange}
+                      placeholder="e.g. Suite 402, Medical Enclave, New Delhi"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {role === 'hospital' && (
+              <div className="signup-section">
+                <div className="section-kicker">HOSPITAL · INSTITUTIONAL INFO</div>
+                <h3>Operating License & Infrastructure</h3>
+                <div className="form-grid">
+                  <label>
+                    <span>Registration / License No. *</span>
+                    <input
+                      name="hospitalRegistrationNumber"
+                      required
+                      value={formData.hospitalRegistrationNumber}
+                      onChange={handleChange}
+                      placeholder="e.g. HOSP-REG-2024-9901"
+                    />
+                  </label>
+                  <label>
+                    <span>Hospital Ownership *</span>
+                    <select
+                      name="hospitalOwnership"
+                      value={formData.hospitalOwnership}
+                      onChange={handleChange}
+                    >
+                      <option value="PRIVATE">Private Hospital / Trust</option>
+                      <option value="PUBLIC">Government / Public Hospital</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Hospital Type</span>
+                    <select
+                      name="hospitalType"
+                      value={formData.hospitalType}
+                      onChange={handleChange}
+                    >
+                      <option>General Hospital</option>
+                      <option>Super Specialty Hospital</option>
+                      <option>Clinic / Nursing Home</option>
+                      <option>Community Health Center</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Bed Capacity</span>
+                    <input
+                      name="beds"
+                      type="number"
+                      min="1"
+                      value={formData.beds}
+                      onChange={handleChange}
+                      placeholder="e.g. 100"
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Hospital Address</span>
+                    <input
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      placeholder="e.g. Sector 12, Main Road, New Delhi"
+                    />
                   </label>
                 </div>
               </div>
@@ -315,37 +469,105 @@ export function Signup() {
                   onChange={(e) => setConsent(e.target.checked)}
                   style={{ width: 'auto', margin: 0 }}
                 />
-                <span>I agree to sovereign patient health data storage and the MediLocker Terms of Service.</span>
+                <span>I confirm the information is accurate and agree to MediLocker Terms of Service.</span>
               </label>
             </div>
 
             <button className="primary-btn" type="submit" disabled={loading} style={{ width: '100%', padding: '16px' }}>
-              {loading ? 'Creating Sovereign Account...' : 'Complete Registration ↗'}
+              {loading ? 'Creating Sovereign Account...' : 'Complete Registration & Generate Unit ID ↗'}
             </button>
 
             <p className="signup-prompt">
-              <span>Already have an account?</span> <Link to="/login">Sign in here →</Link>
+              <span>Already registered?</span> <Link to={`/login?role=${role}`}>Sign in with Email + Password or Unit ID →</Link>
             </p>
           </form>
         </section>
       </main>
 
-      {/* Success Modal with Unit ID */}
+      {/* Success Modal Popup with Unit ID & Login Instructions */}
       {createdUser && (
-        <div className="modal">
-          <div className="modal-card">
-            <div className="success-icon">✓</div>
-            <h2 style={{ fontFamily: 'Manrope', fontSize: '24px', margin: '10px 0' }}>Account Created Successfully!</h2>
-            <p style={{ color: 'var(--muted)', fontSize: '15px' }}>
-              Your permanent, sovereign MediLocker Unit ID has been registered on PostgreSQL:
+        <div className="modal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999 }}>
+          <div className="modal-card" style={{ maxWidth: '520px', width: '90%', textAlign: 'center', padding: '36px 28px', background: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(43,24,54,0.25)' }}>
+            <div className="success-icon" style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px', fontWeight: 900 }}>
+              ✓
+            </div>
+            
+            <div style={{ display: 'inline-block', background: '#f3e8ff', color: '#7e22ce', padding: '4px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '12px' }}>
+              {createdUser.registeredRole?.toUpperCase() || role.toUpperCase()} ACCOUNT CREATED
+            </div>
+
+            <h2 style={{ fontFamily: 'Manrope', fontSize: '24px', fontWeight: 800, margin: '0 0 10px', color: '#2b1836' }}>
+              Registration Successful!
+            </h2>
+            
+            <p style={{ color: '#6b5a7d', fontSize: '14px', margin: '0 0 20px', lineHeight: 1.5 }}>
+              Your unique sovereign identifier has been generated and registered in the health network:
             </p>
-            <div className="generated-id">{createdUser.medilockerId || 'ML-ACCOUNT-ACTIVE'}</div>
-            <p style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '20px' }}>
-              Keep this Unit ID safe. You will use it for doctor consultations and clinical access.
-            </p>
-            <button className="primary-btn" type="button" onClick={() => navigate('/dashboard')} style={{ width: '100%' }}>
-              Proceed to Dashboard ↗
-            </button>
+
+            {/* Generated Unit ID Display */}
+            <div style={{ background: '#f8f4fb', border: '2px dashed #7e22ce', borderRadius: '16px', padding: '18px', margin: '0 0 16px' }}>
+              <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#7e22ce', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                Your Unique Unit ID
+              </span>
+              <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 900, color: '#2b1836', letterSpacing: '2px', wordBreak: 'break-all' }}>
+                {createdUser.medilockerId || 'ML-XXXX-XXXX'}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyUnitId}
+                style={{
+                  marginTop: '10px',
+                  background: copied ? '#16a34a' : '#2b1836',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+              >
+                {copied ? '✓ Unit ID Copied!' : '📋 Copy Unit ID'}
+              </button>
+            </div>
+
+            {/* Clear Login Information Alert */}
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '14px', textAlign: 'left', margin: '0 0 24px' }}>
+              <p style={{ margin: '0 0 6px', fontSize: '13px', color: '#1e40af', fontWeight: 700 }}>
+                🔑 How to Sign In:
+              </p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1e3a8a', lineHeight: 1.5 }}>
+                You can log in using your registered email (<strong>{createdUser.email || formData.email}</strong>) and <strong>EITHER</strong> your chosen Password <strong>OR</strong> this Unique Unit ID (<strong>{createdUser.medilockerId}</strong>).
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                style={{ width: '100%', padding: '14px', fontSize: '15px' }}
+              >
+                Enter Care Dashboard ↗
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/login?role=${role}`)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#6b5a7d',
+                  cursor: 'pointer',
+                }}
+              >
+                Sign in with Credentials →
+              </button>
+            </div>
           </div>
         </div>
       )}

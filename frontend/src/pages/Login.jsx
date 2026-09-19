@@ -8,6 +8,7 @@ export function Login() {
   const initialRole = (searchParams.get('role') || 'patient').toUpperCase();
   const [role, setRole] = useState(initialRole);
   const [email, setEmail] = useState('');
+  const [authMode, setAuthMode] = useState('password'); // 'password' or 'unitId'
   const [password, setPassword] = useState('');
   const [unitId, setUnitId] = useState('');
   const [error, setError] = useState('');
@@ -25,25 +26,45 @@ export function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setError('Email address is required.');
+      return;
+    }
+
+    const cleanPassword = password.trim();
+    const cleanUnitId = unitId.trim().toUpperCase();
+
+    if (authMode === 'password' && !cleanPassword) {
+      setError('Please enter your password to sign in.');
+      return;
+    }
+
+    if (authMode === 'unitId' && !cleanUnitId) {
+      setError('Please enter your Unique Unit ID (ML-XXXX-XXXX) to sign in.');
+      return;
+    }
+
+    if (!cleanPassword && !cleanUnitId) {
+      setError('Please provide either your Password or your Unique Unit ID.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const payload = {
-        email: email.trim(),
+        email: cleanEmail,
         role,
-        ...(password ? { password } : {}),
-        ...(unitId ? { medilockerId: unitId.trim() } : {}),
+        ...(cleanPassword ? { password: cleanPassword } : {}),
+        ...(cleanUnitId ? { medilockerId: cleanUnitId } : {}),
       };
-
-      // If user only entered unitId and no password, pass it as medilockerId or password
-      if (!payload.password && payload.medilockerId) {
-        payload.password = payload.medilockerId;
-      }
 
       await login(payload);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Login failed. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
@@ -55,7 +76,7 @@ export function Login() {
         return {
           symbol: '✚',
           title: 'Doctor Portal Login',
-          subtitle: 'Sign in to access patient records, review clinical timelines, and conduct Vaidya triage.',
+          subtitle: 'Sign in to access patient records, review clinical timelines, and conduct consultations.',
         };
       case 'HOSPITAL':
         return {
@@ -141,31 +162,80 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
               />
             </label>
 
-            <label>
-              <span>Password or Security MPIN</span>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
-            </label>
+            {/* Credential Mode Selector: Password vs Unit ID */}
+            <div style={{ margin: '14px 0 10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--plum, #2b1836)', display: 'block', marginBottom: '8px' }}>
+                Sign in using:
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: '#f5edf9', padding: '4px', borderRadius: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('password')}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: authMode === 'password' ? '#2b1836' : 'transparent',
+                    color: authMode === 'password' ? '#ffffff' : '#6b5a7d',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  🔑 Password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('unitId')}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: authMode === 'unitId' ? '#2b1836' : 'transparent',
+                    color: authMode === 'unitId' ? '#ffffff' : '#6b5a7d',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  🪪 Unique Unit ID
+                </button>
+              </div>
+            </div>
 
-            <label>
-              <span>Unique Unit ID (Optional)</span>
-              <input
-                type="text"
-                value={unitId}
-                onChange={(e) => setUnitId(e.target.value)}
-                placeholder="ML-XXXX-XXXX"
-                autoComplete="off"
-              />
-            </label>
+            {authMode === 'password' ? (
+              <label>
+                <span>Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your account password"
+                  autoComplete="current-password"
+                />
+              </label>
+            ) : (
+              <label>
+                <span>Unique Unit ID</span>
+                <input
+                  type="text"
+                  value={unitId}
+                  onChange={(e) => setUnitId(e.target.value)}
+                  placeholder="ML-XXX-XXX-XXX"
+                  autoComplete="off"
+                />
+              </label>
+            )}
+
+            <p style={{ fontSize: '12px', color: 'var(--muted, #6b5a7d)', margin: '4px 0 16px' }}>
+              💡 You can authenticate using either your password or the unique Unit ID generated during registration.
+            </p>
 
             <button className="primary-btn full" type="submit" disabled={loading}>
               {loading ? 'Authenticating...' : 'Sign in ↗'}

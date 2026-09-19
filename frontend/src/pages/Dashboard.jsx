@@ -186,6 +186,7 @@ export function Dashboard() {
       {/* 2-Day Refill Banner if any item is low */}
       {refillAlerts.length > 0 && (
         <div
+          className="dashboard-refill-banner"
           style={{
             background: '#fff7ed',
             border: '1px solid #f97316',
