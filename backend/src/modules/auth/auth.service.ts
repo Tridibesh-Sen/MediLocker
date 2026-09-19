@@ -104,29 +104,54 @@ export class AuthService {
           pincode: data.pincode || null,
         },
       });
-    } else if (data.role === UserRole.DOCTOR) {
+    } else if (normalizedRole === UserRole.DOCTOR) {
+      const regNum = data.registrationNumber || data.registrationNo || `REG-${Date.now().toString().slice(-6)}`;
+      const existingDoc = await prisma.doctorProfile.findUnique({
+        where: { registrationNumber: regNum },
+      }).catch(() => null);
+
+      if (existingDoc) {
+        throw new AppError(`Medical Council Registration Number "${regNum}" is already registered. Please check your registration number or sign in.`, 409);
+      }
+
       await prisma.doctorProfile.create({
         data: {
           userId: user.id,
           fullName: data.fullName || data.name || 'Doctor',
-          professionalEmail: data.email.toLowerCase(),
-          phone: data.phone,
+          professionalEmail: (data.email || user.email).toLowerCase(),
+          phone: String(data.phone || user.phone || ''),
           institutionalDoctorId: data.institutionalDoctorId || data.doctorId || `DOC-${Date.now().toString().slice(-6)}`,
-          registrationNumber: data.registrationNumber,
+          registrationNumber: regNum,
           specialization: data.specialization || 'General Medicine',
-          degree: data.degree || null,
+          degree: data.degree || data.doctorDegree || 'MBBS',
           certificateUrl: data.certificateUrl || null,
           registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
           yearsExperience: Number(data.yearsExperience || data.experience) || 0,
           clinicName: data.clinicName || 'Clinical Practice',
-          clinicVerificationRef: data.clinicVerificationRef || data.clinicVerification,
+          clinicVerificationRef: data.clinicVerificationRef || data.clinicVerification || null,
           clinicAddress: data.clinicAddress || data.address || 'Medical Facility',
           city: data.city || 'City',
           state: data.state || 'State',
           verificationStatus: 'PENDING_VERIFICATION',
         },
       });
-    } else if (data.role === UserRole.HOSPITAL) {
+    } else if (normalizedRole === UserRole.HOSPITAL) {
+      const licNum = data.license || data.hospitalLicense || data.licenseNumber || `HOSP-${Date.now().toString().slice(-6)}`;
+      const hospId = data.hospitalId || `HOS-${Date.now().toString().slice(-6)}`;
+
+      const existingHosp = await prisma.hospitalProfile.findFirst({
+        where: {
+          OR: [
+            { licenseNumber: licNum },
+            { hospitalId: hospId },
+          ],
+        },
+      }).catch(() => null);
+
+      if (existingHosp) {
+        throw new AppError(`Hospital License Number or Hospital ID is already registered. Please check your credentials.`, 409);
+      }
+
       const schemes = Array.isArray(data.govtSchemesList)
         ? data.govtSchemesList
         : data.govtSchemes
@@ -137,10 +162,10 @@ export class AuthService {
         data: {
           userId: user.id,
           hospitalName: data.name || data.hospitalName || 'Hospital',
-          officialEmail: data.email.toLowerCase(),
-          phone: data.phone,
-          hospitalId: data.hospitalId,
-          licenseNumber: data.license || data.hospitalLicense || `HOSP-${Date.now().toString().slice(-6)}`,
+          officialEmail: (data.email || user.email).toLowerCase(),
+          phone: String(data.phone || user.phone || ''),
+          hospitalId: hospId,
+          licenseNumber: licNum,
           registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
           address: data.address || data.hospitalAddress || 'Hospital Address',
           city: data.city || data.hospitalCity || 'City',
@@ -148,14 +173,14 @@ export class AuthService {
           hospitalType: data.hospitalType || 'General Hospital',
           hospitalOwnership: (data.hospitalOwnership || 'PRIVATE').toUpperCase(),
           bedCapacity: Number(data.beds || data.bedCapacity) || 0,
-          authorizedRepresentative: data.representative || data.authorizedRepresentative,
+          authorizedRepresentative: data.representative || data.authorizedRepresentative || null,
           managingDirectorName: data.managingDirectorName || data.mdName || null,
           managingDirectorContact: data.managingDirectorContact || data.mdPhone || null,
           govtSchemesAvailable: Boolean(data.govtSchemesAvailable || schemes.length > 0),
           govtSchemesList: schemes,
           registrationCertificateUrl: data.registrationCertificateUrl || null,
           verificationStatus: 'PENDING_VERIFICATION',
-          verificationRef: data.verificationRef || data.hospitalVerificationRef,
+          verificationRef: data.verificationRef || data.hospitalVerificationRef || null,
         },
       });
     }
