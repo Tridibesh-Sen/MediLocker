@@ -19,9 +19,12 @@ export function AuthProvider({ children }) {
       }
       try {
         const res = await api.getMe();
-        if (res?.user) {
-          setUser(res.user);
-          api.setSession(res.user);
+        const meUser = res?.user || res?.data || (res?.id ? res : null);
+        if (meUser && meUser.id) {
+          const normRole = (meUser.role || (meUser.doctorProfile ? 'DOCTOR' : meUser.hospitalProfile ? 'HOSPITAL' : 'PATIENT')).toUpperCase();
+          const normalized = { ...meUser, role: normRole };
+          setUser(normalized);
+          api.setSession(normalized);
         }
       } catch (err) {
         console.warn('Session verification fallback to stored session:', err.message);
@@ -34,18 +37,28 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (payload) => {
     const res = await api.login(payload);
-    if (res?.user && res?.token) {
-      setUser(res.user);
-      setToken(res.token);
+    const u = res?.user || res?.data?.user || res?.data;
+    const t = res?.token || res?.data?.token;
+    if (u && t) {
+      const normRole = (u.role || (u.doctorProfile ? 'DOCTOR' : u.hospitalProfile ? 'HOSPITAL' : 'PATIENT')).toUpperCase();
+      const normalized = { ...u, role: normRole };
+      setUser(normalized);
+      setToken(t);
+      api.setSession(normalized);
     }
     return res;
   }, []);
 
   const signup = useCallback(async (payload) => {
     const res = await api.signup(payload);
-    if (res?.user && res?.token) {
-      setUser(res.user);
-      setToken(res.token);
+    const u = res?.user || res?.data?.user || res?.data;
+    const t = res?.token || res?.data?.token;
+    if (u && t) {
+      const normRole = (u.role || (u.doctorProfile ? 'DOCTOR' : u.hospitalProfile ? 'HOSPITAL' : 'PATIENT')).toUpperCase();
+      const normalized = { ...u, role: normRole };
+      setUser(normalized);
+      setToken(t);
+      api.setSession(normalized);
     }
     return res;
   }, []);
@@ -59,20 +72,26 @@ export function AuthProvider({ children }) {
   const refreshUser = useCallback(async () => {
     try {
       const res = await api.getMe();
-      if (res?.user) {
-        setUser(res.user);
-        api.setSession(res.user);
+      const meUser = res?.user || res?.data || (res?.id ? res : null);
+      if (meUser && meUser.id) {
+        const normRole = (meUser.role || (meUser.doctorProfile ? 'DOCTOR' : meUser.hospitalProfile ? 'HOSPITAL' : 'PATIENT')).toUpperCase();
+        const normalized = { ...meUser, role: normRole };
+        setUser(normalized);
+        api.setSession(normalized);
+        return normalized;
       }
-      return res?.user;
+      return null;
     } catch {
       return null;
     }
   }, []);
 
+  const effectiveRole = (user?.role || (user?.doctorProfile ? 'DOCTOR' : user?.hospitalProfile ? 'HOSPITAL' : 'PATIENT')).toUpperCase();
+
   const value = {
     user,
     token,
-    role: user?.role || 'PATIENT',
+    role: effectiveRole,
     isAuthenticated: Boolean(token && user),
     loading,
     login,

@@ -7,7 +7,10 @@ import { useAuth } from '../../context/AuthContext';
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
-  const role = user?.role || 'PATIENT';
+  const userRole = String(user?.role || '').toUpperCase();
+  const isDoctor = userRole === 'DOCTOR' || Boolean(user?.doctorProfile);
+  const isHospital = userRole === 'HOSPITAL' || Boolean(user?.hospitalProfile);
+  const role = isDoctor ? 'DOCTOR' : isHospital ? 'HOSPITAL' : 'PATIENT';
 
   return (
     <>

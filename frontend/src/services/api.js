@@ -178,11 +178,15 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    if (data.token) {
-      this.setToken(data.token);
-      this.setSession(data.user);
+    const token = data.token || data.data?.token;
+    const user = data.user || data.data?.user || data.data;
+    if (token) {
+      this.setToken(token);
     }
-    return data;
+    if (user && user.id) {
+      this.setSession(user);
+    }
+    return { ...data, token, user };
   }
 
   async signup(payload) {
@@ -190,11 +194,15 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    if (data.token) {
-      this.setToken(data.token);
-      this.setSession(data.user);
+    const token = data.token || data.data?.token;
+    const user = data.user || data.data?.user || data.data;
+    if (token) {
+      this.setToken(token);
     }
-    return data;
+    if (user && user.id) {
+      this.setSession(user);
+    }
+    return { ...data, token, user };
   }
 
   async getMe() {
