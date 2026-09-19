@@ -7,8 +7,11 @@ import { DoctorDashboard } from '../components/dashboard/DoctorDashboard';
 export function Dashboard() {
   const { user } = useAuth();
   
+  const userRole = String(user?.role || '').toUpperCase();
+  const isDoctor = userRole === 'DOCTOR' || Boolean(user?.doctorProfile);
+
   // If authenticated user is a DOCTOR, render dedicated Doctor Dashboard
-  if (user?.role === 'DOCTOR') {
+  if (isDoctor) {
     return <DoctorDashboard user={user} />;
   }
 

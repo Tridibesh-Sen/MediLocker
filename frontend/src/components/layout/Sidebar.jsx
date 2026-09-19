@@ -10,7 +10,10 @@ export function Sidebar({ isOpen = false, onClose = () => {} }) {
   const name = user?.patientProfile?.fullName || user?.name || user?.email?.split('@')[0] || 'Patient';
   const unitId = user?.medilockerId || user?.patientProfile?.id || user?.id || 'ML-SECURE';
   const initials = (name.split(' ').map((n) => n[0]).join('') || 'P').slice(0, 2).toUpperCase();
-  const role = user?.role || 'PATIENT';
+  const userRole = String(user?.role || '').toUpperCase();
+  const isDoctor = userRole === 'DOCTOR' || Boolean(user?.doctorProfile);
+  const isHospital = userRole === 'HOSPITAL' || Boolean(user?.hospitalProfile);
+  const role = isDoctor ? 'DOCTOR' : isHospital ? 'HOSPITAL' : 'PATIENT';
   const roleTitle = role === 'DOCTOR' ? t('doctorSuiteTitle', 'Doctor / Clinical Suite') : role === 'HOSPITAL' ? t('hospitalPortalTitle', 'Hospital & Emergency Portal') : t('patientSpaceTitle', 'Patient Sovereign Space');
   const roleBadgeColor = role === 'DOCTOR' ? '#b45309' : role === 'HOSPITAL' ? '#0284c7' : 'var(--plum)';
 
