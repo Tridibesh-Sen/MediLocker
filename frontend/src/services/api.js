@@ -373,7 +373,7 @@ class ApiService {
     return this.request(path);
   }
 
-  // --- Consent & Delegation ---
+  // --- Consent, Access & Doctor Delegation ---
   async listDelegations() {
     return this.request('/api/v1/delegation');
   }
@@ -385,9 +385,85 @@ class ApiService {
     });
   }
 
-  async revokeDelegation(id) {
-    return this.request(`/api/v1/delegation/${id}`, {
-      method: 'DELETE',
+  async revokeDelegation(delegationId) {
+    this.invalidateCache('/api/v1/delegation');
+    return this.request('/api/v1/delegation/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ delegationId }),
+    });
+  }
+
+  async searchPatient(medilockerId) {
+    return this.request(`/api/v1/delegation/search-patient?medilockerId=${encodeURIComponent(medilockerId)}`, {
+      skipCache: true,
+    });
+  }
+
+  async createAccessRequest(payload) {
+    this.invalidateCache('/api/v1/delegation');
+    return this.request('/api/v1/delegation/create-request', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async verifyPatientOtp(payload) {
+    this.invalidateCache('/api/v1/delegation');
+    return this.request('/api/v1/delegation/verify-code', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getPatientRequests() {
+    return this.request('/api/v1/delegation/patient-requests', {
+      skipCache: true,
+    });
+  }
+
+  async getDoctorActivePatients() {
+    return this.request('/api/v1/delegation/doctor/active-patients', {
+      skipCache: true,
+    });
+  }
+
+  async getProviderPendingRequests() {
+    return this.request('/api/v1/delegation/provider/pending-requests', {
+      skipCache: true,
+    });
+  }
+
+  async getDoctorPatientFullData(patientId) {
+    return this.request(`/api/v1/delegation/doctor/patient/${encodeURIComponent(patientId)}/full-data`, {
+      skipCache: true,
+    });
+  }
+
+  // --- Appointments ---
+  async getMyAppointments() {
+    return this.request('/api/v1/appointments/my', {
+      skipCache: true,
+    });
+  }
+
+  async updateAppointmentStatus(id, status) {
+    this.invalidateCache('/api/v1/appointments');
+    return this.request(`/api/v1/appointments/${encodeURIComponent(id)}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async listDoctors(params = {}) {
+    const q = new URLSearchParams(params).toString();
+    return this.request(`/api/v1/appointments/doctors${q ? `?${q}` : ''}`);
+  }
+
+  async bookAppointment(payload) {
+    this.invalidateCache('/api/v1/appointments');
+    return this.request('/api/v1/appointments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 

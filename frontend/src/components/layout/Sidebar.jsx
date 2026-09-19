@@ -54,59 +54,32 @@ export function Sidebar({ isOpen = false, onClose = () => {} }) {
       </div>
 
       <nav className="side-nav">
-        {/* Patient Core Locker */}
-        <div style={{ padding: '8px 12px 4px', fontSize: '10px', fontWeight: 800, letterSpacing: '1px', color: 'var(--muted)', textTransform: 'uppercase' }}>
-          {t('patientVaultHeader', 'Patient Health Vault')}
-        </div>
-        <NavLink to="/dashboard" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ⌂ <span>{t('dashboard', 'Dashboard')}</span>
-        </NavLink>
-        <NavLink to="/timeline" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ⏳ <span>{t('timelinePage', 'Health Timeline')}</span>
-        </NavLink>
-        <NavLink to="/records" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ▤ <span>{t('recordsPage', 'Medical Records')}</span>
-        </NavLink>
-        <NavLink to="/medications" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ✓ <span>{t('todoPage', 'Medication To-Do')}</span>
-        </NavLink>
-        <NavLink to="/inventory" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ⊞ <span>{t('inventoryPage', 'Medicine Cabinet')}</span>
-        </NavLink>
-        <NavLink to="/companion" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ✦ <span>{t('aiCompanionPage', 'Medi-AI Companion')}</span>
-        </NavLink>
-        <NavLink to="/kiosk" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#0284c7' }}>
-          🏥 <span>{t('kioskPage', 'OPD Touch Kiosk')}</span>
-        </NavLink>
-        <NavLink to="/profile" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-          ◉ <span>{t('profilePage', 'My Profile & QR')}</span>
-        </NavLink>
-
-        {/* Doctor & Clinical Section - Doctors & Admins only */}
-        {(role === 'DOCTOR' || role === 'ADMIN') && (
+        {role === 'DOCTOR' ? (
           <>
-            <div style={{ padding: '16px 12px 4px', fontSize: '10px', fontWeight: 800, letterSpacing: '1px', color: '#b45309', textTransform: 'uppercase' }}>
-              {t('doctorSuiteHeader', 'Doctor Clinical Suite')}
+            <div style={{ padding: '8px 12px 4px', fontSize: '10px', fontWeight: 800, letterSpacing: '1px', color: '#b45309', textTransform: 'uppercase' }}>
+              {t('doctorNavigation', 'Doctor Navigation')}
             </div>
-            <NavLink to="/vaidya" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#b45309' }}>
-              🩺 <span>{t('vaidyaPage', 'Vaidya 30s Chart')}</span>
+            <NavLink to="/dashboard" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ⌂ <span>{t('dashboard', 'Dashboard')}</span>
             </NavLink>
-            <NavLink to="/scanner" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#b91c1c' }}>
-              🚨 <span>{t('scannerPage', 'Emergency QR Scanner')}</span>
+            <NavLink to="/companion" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ✦ <span>{t('aiCompanionPage', 'Medi-AI Companion')}</span>
             </NavLink>
-            <NavLink to="/delegation" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
-              🛡 <span>{t('delegationPage', 'Consent & Access')}</span>
+            <NavLink to="/kiosk" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#0284c7' }}>
+              🏥 <span>{t('kioskPage', 'OPD Touch Kiosk')}</span>
+            </NavLink>
+            <NavLink to="/profile" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ◉ <span>{t('profilePage', 'My Profile')}</span>
             </NavLink>
           </>
-        )}
-
-        {/* Hospital & Emergency Section - Hospitals & Admins only */}
-        {(role === 'HOSPITAL' || role === 'ADMIN') && (
+        ) : role === 'HOSPITAL' ? (
           <>
-            <div style={{ padding: '16px 12px 4px', fontSize: '10px', fontWeight: 800, letterSpacing: '1px', color: '#0284c7', textTransform: 'uppercase' }}>
+            <div style={{ padding: '8px 12px 4px', fontSize: '10px', fontWeight: 800, letterSpacing: '1px', color: '#0284c7', textTransform: 'uppercase' }}>
               {t('hospitalHeader', 'Hospital & Emergency')}
             </div>
+            <NavLink to="/dashboard" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ⌂ <span>{t('dashboard', 'Dashboard')}</span>
+            </NavLink>
             <NavLink to="/hospital-doctors" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#0284c7' }}>
               👨‍⚕️ <span>{t('hospitalDoctorsPage', 'Hospital Doctors & Staff')}</span>
             </NavLink>
@@ -115,6 +88,40 @@ export function Sidebar({ isOpen = false, onClose = () => {} }) {
             </NavLink>
             <NavLink to="/scanner" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#b91c1c' }}>
               🚨 <span>{t('scannerPage', 'Emergency QR Scanner')}</span>
+            </NavLink>
+            <NavLink to="/profile" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ◉ <span>{t('profilePage', 'My Profile')}</span>
+            </NavLink>
+          </>
+        ) : (
+          <>
+            {/* Patient Core Locker */}
+            <div style={{ padding: '8px 12px 4px', fontSize: '10px', fontWeight: 800, letterSpacing: '1px', color: 'var(--muted)', textTransform: 'uppercase' }}>
+              {t('patientVaultHeader', 'Patient Health Vault')}
+            </div>
+            <NavLink to="/dashboard" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ⌂ <span>{t('dashboard', 'Dashboard')}</span>
+            </NavLink>
+            <NavLink to="/timeline" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ⏳ <span>{t('timelinePage', 'Health Timeline')}</span>
+            </NavLink>
+            <NavLink to="/records" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ▤ <span>{t('recordsPage', 'Medical Records')}</span>
+            </NavLink>
+            <NavLink to="/medications" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ✓ <span>{t('todoPage', 'Medication To-Do')}</span>
+            </NavLink>
+            <NavLink to="/inventory" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ⊞ <span>{t('inventoryPage', 'Medicine Cabinet')}</span>
+            </NavLink>
+            <NavLink to="/companion" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ✦ <span>{t('aiCompanionPage', 'Medi-AI Companion')}</span>
+            </NavLink>
+            <NavLink to="/kiosk" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#0284c7' }}>
+              🏥 <span>{t('kioskPage', 'OPD Touch Kiosk')}</span>
+            </NavLink>
+            <NavLink to="/profile" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
+              ◉ <span>{t('profilePage', 'My Profile & QR')}</span>
             </NavLink>
           </>
         )}
