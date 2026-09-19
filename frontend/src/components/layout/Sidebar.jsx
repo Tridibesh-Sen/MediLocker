@@ -123,6 +123,9 @@ export function Sidebar({ isOpen = false, onClose = () => {} }) {
             <NavLink to="/kiosk" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#0284c7' }}>
               🏥 <span>{t('kioskPage', 'OPD Touch Kiosk')}</span>
             </NavLink>
+            <NavLink to="/delegation" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')} style={{ color: '#047857' }}>
+              🛡 <span>{t('delegationPage', 'Consent & Access')}</span>
+            </NavLink>
             <NavLink to="/profile" onClick={handleLinkClick} className={({ isActive }) => (isActive ? 'active' : '')}>
               ◉ <span>{t('profilePage', 'My Profile & QR')}</span>
             </NavLink>
