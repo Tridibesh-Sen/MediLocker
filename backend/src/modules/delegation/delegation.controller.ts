@@ -68,7 +68,7 @@ export class DelegationController {
    */
   static async revokeDelegation(req: Request, res: Response, next: NextFunction) {
     try {
-      const { delegationId } = req.body;
+      const delegationId = req.body.delegationId || req.body.id || req.params.id;
       const result = await DelegationService.revokeDelegation(
         req.user!.userId,
         req.user!.role,

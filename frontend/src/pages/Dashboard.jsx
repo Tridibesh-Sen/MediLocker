@@ -19,6 +19,7 @@ export function Dashboard() {
   const [recordsCount, setRecordsCount] = useState(0);
   const [inventoryCount, setInventoryCount] = useState(0);
   const [refillAlerts, setRefillAlerts] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [todayFeelingSubmitted, setTodayFeelingSubmitted] = useState(false);
   const [todayFeeling, setTodayFeeling] = useState(null);
   const [isEditingFeeling, setIsEditingFeeling] = useState(false);
@@ -32,13 +33,21 @@ export function Dashboard() {
   const loadDashboardData = async () => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
-      const [todosRes, recordsRes, invRes, refillsRes, feelingsRes] = await Promise.allSettled([
+      const [todosRes, recordsRes, invRes, refillsRes, feelingsRes, requestsRes] = await Promise.allSettled([
         api.getTodos(),
         api.listRecords(),
         api.getInventory(),
         api.checkRefills(),
         api.getFeelings(14),
+        api.getPatientRequests(),
       ]);
+
+      if (requestsRes.status === 'fulfilled' && requestsRes.value?.data) {
+        const d = requestsRes.value.data;
+        if (Array.isArray(d.pendingRequests)) {
+          setPendingRequests(d.pendingRequests);
+        }
+      }
 
       let feelingDone = false;
       let loggedFeeling = null;
@@ -192,6 +201,55 @@ export function Dashboard() {
           Upload a record ↗
         </Link>
       </div>
+
+      {/* Incoming Doctor Access Request Alert Banner */}
+      {pendingRequests.length > 0 && (
+        <div
+          className="dashboard-consent-banner"
+          style={{
+            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+            border: '2px solid #f59e0b',
+            borderRadius: '20px',
+            padding: '18px 24px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+            boxShadow: '0 8px 20px -6px rgba(245, 158, 11, 0.2)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '28px' }}>🔐</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ color: '#92400e', fontSize: '16px' }}>
+                  Doctor Access Request: Dr. {pendingRequests[0].doctorName || 'Attending Physician'}
+                </strong>
+                <span style={{ background: '#d97706', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 800 }}>
+                  Action Required
+                </span>
+              </div>
+              <p style={{ margin: '3px 0 0', color: '#b45309', fontSize: '13.5px' }}>
+                Your 6-Digit Passcode: <strong style={{ fontSize: '16px', letterSpacing: '2px', background: '#ffffff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d97706' }}>{pendingRequests[0].authCode}</strong> • Share this code with your doctor to unlock records.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/delegation"
+            className="primary-btn"
+            style={{
+              background: '#b45309',
+              padding: '10px 18px',
+              fontSize: '13px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Review in Consent & Access ↗
+          </Link>
+        </div>
+      )}
 
       {/* 2-Day Refill Banner if any item is low */}
       {refillAlerts.length > 0 && (
