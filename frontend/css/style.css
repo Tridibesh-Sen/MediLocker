@@ -126,9 +126,12 @@
 .notice{background:var(--sage)}
 .notice>span{font-size:21px}
 .notice strong{font:700 16px "Manrope"}
-.notice p{margin:3px 0;color:#596353;font-size:14px}
-@media(max-width:1040px){.hero,.login-shell{grid-template-columns:1fr}.upload-card{grid-template-columns:1fr}.portal-grid,.feature-strip{grid-template-columns:1fr}.app-layout{grid-template-columns:1fr}.sidebar{display:none}.app-main{padding:35px 5% 80px}}
-@media(max-width:650px){body{font-size:16.5px}.site-header,.app-header{height:auto;min-height:72px;padding:10px 4%}.nav-links{display:none}.header-actions,.app-header-right{gap:6px}.hero{padding:45px 4%}.hero h1{font-size:42px;letter-spacing:-1.5px}.hero-text{font-size:17px}.hero-buttons{flex-direction:row!important;flex-wrap:wrap!important;justify-content:center!important;gap:10px!important}.details-grid{grid-template-columns:1fr}.page-title{align-items:flex-start;flex-direction:column}.page-title h1{font-size:38px}.todo-summary{flex-direction:column;align-items:flex-start;gap:18px}.todo-progress{width:100%}.med-task{grid-template-columns:24px 38px 1fr}.med-task>b{grid-column:3}.record-main{align-items:flex-start;flex-direction:column}.profile-hero{align-items:flex-start;flex-wrap:wrap}.status-pill{margin-left:0}.upload-card,.profile-card{padding:20px}footer{flex-direction:column;gap:16px;text-align:center}}
+/* Base Responsive Utilities */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 .signup-shell .login-card{padding:38px}.signup-extra{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}.signup-extra .wide{grid-column:1/-1}.signup-extra textarea{width:100%;border:1px solid #d8d0c9;border-radius:12px;padding:13px;background:#fbf9f6}.consent{display:flex!important;gap:10px;align-items:flex-start;font-weight:500!important}.consent input{width:auto!important;margin-top:5px}.signup-prompt{text-align:center;margin-top:18px;color:#77717c}.signup-prompt a{font-weight:800;color:#51466e}.modal{position:fixed;inset:0;background:rgba(26,22,35,.55);display:grid;place-items:center;z-index:50;padding:20px}.modal.hidden{display:none}.modal-card{background:#fff;border-radius:28px;padding:42px;max-width:500px;text-align:center;position:relative}.modal-close{position:absolute;right:18px;top:12px;border:0;background:none;font-size:30px}.success-icon{width:70px;height:70px;border-radius:50%;background:#e2ebe4;color:#3c624b;display:grid;place-items:center;font-size:30px;margin:15px auto}.generated-id{font:800 28px Manrope;letter-spacing:3px;background:#f0ece7;padding:17px;border-radius:14px;margin:22px 0}.location-btn:disabled{opacity:.6;cursor:wait}@media(max-width:600px){.signup-extra{grid-template-columns:1fr}.signup-extra .wide{grid-column:auto}}
 /* Role-aware registration and provider workspace */
@@ -454,25 +457,54 @@
 
 /* ==========================================================================
    MASTER RESPONSIVE SYSTEM FOR ALL MEDILOCKER VIEWS
-   Ensures 100% fluid, consistent responsiveness across all tabs:
-   Home, Dashboard, Records, Medications, Timeline, Inventory,
-   AI-Companion, Tests, Delegation, Upload, Profile, Doctor & Hospital Portals
+   100% Fluid, Modern, Adaptive Layout across All Devices & Viewports (320px to 4K):
+   - Landing Page, Auth (Login / Signup / Unit ID Modal)
+   - Patient Dashboard, Health Timeline, Records Vault, Medication To-Do, Medicine Cabinet
+   - Medi-AI Multilingual Companion, Civil Hospital Kiosk, Vaidya 30s Chart, Emergency Scanner
+   - Hospital Staff & Doctors Roster, Consent Delegation, Profile & Arogya Card
    ========================================================================== */
 
-/* Universal Fluidity */
+/* Universal Fluidity & Resets */
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
+  width: 100%;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
-img, video, canvas, svg {
+
+*, *:before, *:after {
+  box-sizing: border-box;
+}
+
+img, video, canvas, svg, iframe {
   max-width: 100%;
   height: auto;
 }
+
 input, select, textarea, button {
   max-width: 100%;
+  box-sizing: border-box;
 }
 
-/* Mobile Drawer, Backdrop & Responsive Layouts (1000px and below) */
+/* Responsive Table Wrappers */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 12px 0;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(81, 66, 103, 0.2);
+  border-radius: 999px;
+}
+
+/* Mobile Drawer & Backdrop Controls */
 .mobile-menu-btn {
   display: none;
 }
@@ -498,7 +530,7 @@ input, select, textarea, button {
   pointer-events: auto;
 }
 
-/* Responsive Grid Utility Classes */
+/* Base Responsive Grid Utility Classes */
 .companion-grid {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
@@ -538,6 +570,12 @@ input, select, textarea, button {
   margin-bottom: 20px;
 }
 
+.kiosk-patient-info-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 12px;
+}
+
 .scanner-main-grid {
   display: grid;
   grid-template-columns: minmax(320px, 1.2fr) minmax(280px, 0.8fr);
@@ -558,1083 +596,118 @@ input, select, textarea, button {
   gap: 12px;
 }
 
-@media (max-width: 1000px) {
-  .trust-strip { grid-template-columns: repeat(2, 1fr); }
-  .features-grid { grid-template-columns: repeat(2, 1fr); }
-  .security-section { grid-template-columns: 1fr; border-radius: 24px; padding: 45px 5%; }
-
-  .mobile-menu-btn {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
-    background: var(--white);
-    border: 1px solid var(--line);
-    color: var(--plum);
-    font-size: 18px;
-    font-weight: 800;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: all 0.18s ease;
-  }
-  .mobile-menu-btn:hover {
-    background: var(--lav);
-  }
-
-  .mobile-drawer-close {
-    display: flex !important;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 14px 12px !important;
-    border-bottom: 1px solid rgba(81, 66, 103, 0.12);
-    margin-bottom: 8px;
-    flex-shrink: 0;
-  }
-
-  .app-layout {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Slide-in Mobile Navigation Drawer */
-  .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    bottom: 0 !important;
-    width: 290px !important;
-    max-width: 86vw !important;
-    height: 100vh !important;
-    min-height: 100vh !important;
-    max-height: 100vh !important;
-    z-index: 1000 !important;
-    background: #eee8ef !important;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.45) !important;
-    transform: translateX(-105%) !important;
-    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 12px 10px 24px !important;
-  }
-
-  .sidebar.mobile-open {
-    transform: translateX(0) !important;
-  }
-
-  .app-main {
-    padding: 28px 4% 95px !important;
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-  .mobile-bottom-nav {
-    display: flex !important;
-    align-items: center;
-    justify-content: space-around;
-  }
-  .floating-ai-btn {
-    bottom: 78px !important;
-    right: 18px !important;
-    padding: 10px 16px !important;
-    font-size: 13px !important;
-  }
-  .dashboard-grid,
-  .quick-grid,
-  .cabinet-grid,
-  .vitals-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 16px !important;
-  }
-  .upload-card {
-    grid-template-columns: 1fr !important;
-    gap: 28px !important;
-  }
-  .provider-hero {
-    flex-direction: column !important;
-    gap: 20px !important;
-    padding: 30px 24px !important;
-  }
-  .provider-stat {
-    border-left: 0 !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
-    padding: 18px 0 0 !important;
-    width: 100% !important;
-    align-items: flex-start !important;
-  }
-
-  .companion-grid,
-  .vaidya-main-grid,
-  .vaidya-two-col-grid,
-  .kiosk-grid,
-  .scanner-main-grid,
-  .profile-arogya-grid {
-    grid-template-columns: 1fr !important;
-  }
+.delegation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 35px;
 }
 
-/* Large Mobile & Tablets (800px and below) */
-@media (max-width: 800px) {
-  .site-header, .app-header {
-    height: auto !important;
-    min-height: 68px !important;
-    padding: 12px 4% !important;
-    flex-wrap: wrap !important;
-    justify-content: space-between !important;
-    gap: 10px !important;
-  }
-  .brand {
-    font-size: 22px !important;
-    margin-right: 0 !important;
-  }
-  .app-header-right {
-    gap: 8px !important;
-    margin-left: auto !important;
-  }
-  .location-btn {
-    display: none !important;
-  }
-  .page-title {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 16px !important;
-    margin-bottom: 28px !important;
-  }
-  .page-title h1 {
-    font-size: clamp(28px, 6vw, 42px) !important;
-    letter-spacing: -1.5px !important;
-    line-height: 1.08 !important;
-    margin: 6px 0 !important;
-    word-break: break-word !important;
-  }
-  .page-title p {
-    font-size: 15px !important;
-    line-height: 1.5 !important;
-  }
-  .page-title .primary-btn,
-  .page-title .secondary-btn {
-    width: 100% !important;
-    text-align: center !important;
-    justify-content: center !important;
-  }
-  .patient-search {
-    flex-direction: column !important;
-  }
-  .patient-result-head {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 10px !important;
-  }
-  .patient-result-head .status-pill {
-    margin-left: 0 !important;
-  }
-  .patient-result-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
+.inventory-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
-/* Mobile Screens (650px and below) */
-@media (max-width: 650px) {
-  body {
-    font-size: 16px !important;
-  }
-  .trust-strip { grid-template-columns: 1fr !important; }
-  .features-grid { grid-template-columns: 1fr !important; }
-  .security-features-grid { grid-template-columns: 1fr !important; }
-
-  .app-main {
-    padding: 24px 4% 95px !important;
-  }
-  .page-title h1 {
-    font-size: clamp(24px, 7.5vw, 34px) !important;
-    letter-spacing: -1px !important;
-  }
-
-  /* Dashboard & Grid Collapse */
-  .dashboard-grid,
-  .quick-grid,
-  .vitals-grid,
-  .cabinet-grid,
-  .patient-result-grid,
-  .details-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-  .summary-card {
-    min-height: auto !important;
-    padding: 20px 18px !important;
-    border-radius: 18px !important;
-  }
-  .summary-card > strong {
-    font-size: 28px !important;
-    margin: 8px 0 !important;
-  }
-  .quick-card {
-    padding: 16px !important;
-    grid-template-columns: 42px 1fr 16px !important;
-    gap: 12px !important;
-    border-radius: 18px !important;
-  }
-  .section-row {
-    margin: 32px 0 14px !important;
-  }
-  .section-row h2 {
-    font-size: 24px !important;
-  }
-
-  /* Records Page */
-  .filter-bar {
-    display: flex !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    gap: 8px !important;
-    padding-bottom: 8px !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-  }
-  .filter-bar::-webkit-scrollbar {
-    display: none !important;
-  }
-  .filter {
-    flex-shrink: 0 !important;
-    padding: 8px 14px !important;
-    font-size: 13px !important;
-  }
-  .record-card {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    padding: 16px !important;
-    gap: 12px !important;
-    border-radius: 18px !important;
-  }
-  .record-icon {
-    margin-right: 0 !important;
-    width: 44px !important;
-    height: 44px !important;
-    font-size: 18px !important;
-    border-radius: 14px !important;
-  }
-  .record-main {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 12px !important;
-    width: 100% !important;
-  }
-  .record-main h3 {
-    font-size: 18px !important;
-  }
-  .record-main .view-btn,
-  .record-main .primary-btn {
-    width: 100% !important;
-    text-align: center !important;
-    justify-content: center !important;
-    padding: 10px !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Medications Routine */
-  .todo-summary {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 14px !important;
-    padding: 18px 16px !important;
-    border-radius: 20px !important;
-  }
-  .todo-progress {
-    width: 100% !important;
-  }
-  .med-task {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    gap: 10px !important;
-    padding: 14px 16px !important;
-    border-radius: 16px !important;
-  }
-  .med-task > div {
-    flex: 1 1 180px !important;
-    min-width: 0 !important;
-  }
-  .med-task > b {
-    width: 100% !important;
-    padding-left: 36px !important;
-    margin-top: 2px !important;
-  }
-
-  /* Health Timeline */
-  .feeling-box {
-    padding: 18px 14px !important;
-    border-radius: 20px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  .feeling-box h2 {
-    font-size: clamp(19px, 5vw, 24px) !important;
-    word-break: break-word !important;
-    margin: 8px 0 4px !important;
-  }
-  .feeling-box p {
-    font-size: 14px !important;
-    line-height: 1.5 !important;
-    word-break: break-word !important;
-  }
-  .feeling-btns {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    gap: 8px !important;
-    box-sizing: border-box !important;
-  }
-  .feeling-btn {
-    width: 100% !important;
-    padding: 12px 14px !important;
-    font-size: 14px !important;
-    justify-content: flex-start !important;
-    text-align: left !important;
-    gap: 8px !important;
-    border-radius: 14px !important;
-    box-sizing: border-box !important;
-    white-space: normal !important;
-  }
-  .feeling-btn span {
-    font-size: 13.5px !important;
-  }
-  .timeline-heat-strip {
-    display: flex !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    padding: 6px 2px 10px !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    gap: 8px !important;
-  }
-  .timeline-heat-strip::-webkit-scrollbar {
-    display: none !important;
-  }
-  .heat-day {
-    flex-shrink: 0 !important;
-  }
-  .records-list {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  .timeline-card {
-    flex-direction: column !important;
-    padding: 16px 14px !important;
-    gap: 12px !important;
-    border-radius: 18px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  .timeline-date {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 8px 12px !important;
-    box-sizing: border-box !important;
-    border-radius: 12px !important;
-  }
-  .timeline-date b, .timeline-date span {
-    font-size: 14px !important;
-    font-weight: 800 !important;
-  }
-  .timeline-content, .timeline-body {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-  }
-  .timeline-content .card-topline {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    width: 100% !important;
-  }
-  .timeline-content h3 {
-    font-size: clamp(17px, 4.5vw, 20px) !important;
-    word-break: break-word !important;
-    line-height: 1.25 !important;
-    margin: 4px 0 !important;
-  }
-  .timeline-content p {
-    font-size: 13.5px !important;
-    word-break: break-word !important;
-  }
-
-  /* Medicine Cabinet */
-  .refill-alert-box {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 14px !important;
-    padding: 18px 14px !important;
-    border-radius: 20px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  .refill-content {
-    width: 100% !important;
-    min-width: 0 !important;
-    word-break: break-word !important;
-  }
-  .refill-actions {
-    width: 100% !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-  .refill-actions a {
-    width: 100% !important;
-    text-align: center !important;
-    justify-content: center !important;
-    padding: 11px !important;
-    font-size: 14px !important;
-    box-sizing: border-box !important;
-  }
-  .ingestion-panel {
-    padding: 18px 14px !important;
-    border-radius: 20px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  .ingestion-panel h2 {
-    font-size: clamp(19px, 5vw, 24px) !important;
-    word-break: break-word !important;
-  }
-  .ingestion-panel p {
-    font-size: 14px !important;
-    line-height: 1.5 !important;
-    word-break: break-word !important;
-  }
-  .ingestion-tabs {
-    display: flex !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
-    padding: 4px 2px 10px !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  .ingestion-tabs::-webkit-scrollbar {
-    display: none !important;
-  }
-  .ingestion-tab {
-    flex-shrink: 0 !important;
-    font-size: 12px !important;
-    padding: 8px 14px !important;
-    white-space: nowrap !important;
-    border-radius: 10px !important;
-  }
-  #scannerDemoArea {
-    padding: 16px 12px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  #scannerVideo {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: 220px !important;
-    object-fit: cover !important;
-    box-sizing: border-box !important;
-  }
-  #scannerModeDesc {
-    max-width: 100% !important;
-    word-break: break-word !important;
-  }
-  #scannerDemoArea div[style*="justify-content:center;gap:10px"] {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    gap: 8px !important;
-  }
-  #scannerDemoArea div[style*="justify-content:center;gap:10px"] button,
-  #scannerDemoArea div[style*="justify-content:center;gap:10px"] label {
-    width: 100% !important;
-    justify-content: center !important;
-    text-align: center !important;
-    padding: 12px 14px !important;
-    box-sizing: border-box !important;
-    margin: 0 !important;
-  }
-  #barcodeInputRow {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    gap: 8px !important;
-    box-sizing: border-box !important;
-  }
-  #barcodeManualInput {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  #lookupBarcodeBtn {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-  #scanResultCard {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 14px 12px !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  #scanResultCard div[style*="grid-template-columns:1fr 1fr"],
-  #scanResultCard div[style*="grid-template-columns"] {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    gap: 8px !important;
-  }
-  #scanResultCard input {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  .cabinet-grid {
-    grid-template-columns: 1fr !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    gap: 14px !important;
-    box-sizing: border-box !important;
-  }
-  .cabinet-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 18px 14px !important;
-    border-radius: 18px !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-  .cabinet-top {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    width: 100% !important;
-  }
-  .cabinet-badge {
-    max-width: 65% !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    font-size: 11px !important;
-  }
-  .cabinet-title {
-    font-size: 19px !important;
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-    margin: 8px 0 2px !important;
-  }
-  .cabinet-salt {
-    font-size: 13.5px !important;
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-    margin-bottom: 10px !important;
-  }
-  .cabinet-meta {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 6px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 10px 0 !important;
-  }
-  .cabinet-meta small {
-    font-size: 10px !important;
-    letter-spacing: 0.8px !important;
-  }
-  .cabinet-meta strong {
-    font-size: 13px !important;
-    word-break: break-all !important;
-  }
-  #addMedicineModal .modal-card {
-    padding: 20px 14px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  #addMedicineForm div[style*="grid-template-columns:1fr 1fr"],
-  #addMedicineForm div[style*="grid-template-columns"] {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    gap: 10px !important;
-  }
-  #addMedicineForm input,
-  #addMedicineForm select {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Medi-AI Chat Interface */
-  .chat-container {
-    height: calc(100vh - 215px) !important;
-    min-height: 400px !important;
-    border-radius: 20px !important;
-  }
-  .chat-header {
-    padding: 12px 16px !important;
-  }
-  .chat-messages {
-    padding: 14px !important;
-    gap: 12px !important;
-  }
-  .chat-bubble {
-    max-width: 90% !important;
-    font-size: 14.5px !important;
-    padding: 11px 14px !important;
-    border-radius: 16px !important;
-  }
-  .chat-chips {
-    display: flex !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    padding: 8px 14px !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    gap: 6px !important;
-  }
-  .chat-chips::-webkit-scrollbar {
-    display: none !important;
-  }
-  .chat-chip {
-    flex-shrink: 0 !important;
-    font-size: 12px !important;
-    padding: 6px 12px !important;
-  }
-  .chat-input-bar {
-    padding: 10px 14px !important;
-    gap: 8px !important;
-  }
-  .chat-input-bar input {
-    padding: 10px 12px !important;
-    font-size: 14px !important;
-  }
-  .chat-input-bar button {
-    padding: 10px 16px !important;
-    font-size: 14px !important;
-  }
-
-  /* Consent & Delegation */
-  .delegation-card {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 14px !important;
-    padding: 18px 16px !important;
-    border-radius: 18px !important;
-  }
-  .delegation-card > div:last-child {
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-  .delegation-card button {
-    width: 100% !important;
-    text-align: center !important;
-    justify-content: center !important;
-  }
-  .audit-table {
-    display: block !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    white-space: nowrap !important;
-  }
-
-  /* Dynamic 6-digit passcode responsive text */
-  [style*="letter-spacing:8px"], [style*="letter-spacing:10px"] {
-    font-size: clamp(20px, 6vw, 28px) !important;
-    letter-spacing: clamp(3px, 1.5vw, 6px) !important;
-    word-break: break-all !important;
-  }
-
-  /* Modals & Dialogs */
-  .modal {
-    padding: 12px !important;
-  }
-  .modal-card {
-    padding: 24px 16px !important;
-    border-radius: 20px !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-  }
-  .modal-card form > div[style*="grid-template-columns"],
-  .modal-card div[style*="grid-template-columns:repeat(3,1fr)"],
-  .modal-card div[style*="grid-template-columns:1fr 1fr"] {
-    grid-template-columns: 1fr !important;
-    gap: 10px !important;
-  }
-  .modal-card .primary-btn,
-  .modal-card .secondary-btn {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-
-  /* Profile & Accounts */
-  .profile-card,
-  .upload-card {
-    padding: 20px 16px !important;
-    border-radius: 20px !important;
-  }
-  .profile-hero {
-    flex-direction: column !important;
-    align-items: center !important;
-    text-align: center !important;
-    gap: 12px !important;
-    padding-bottom: 20px !important;
-  }
-  .profile-hero .status-pill {
-    margin: 8px auto 0 !important;
-  }
-
-  /* Doctor & Hospital Search Forms */
-  #patientSearchForm {
-    flex-direction: column !important;
-    gap: 10px !important;
-  }
-  #patientSearchForm input {
-    width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-  #patientSearchForm button {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-  #sendAccessRequestForm > div {
-    flex-direction: column !important;
-  }
-  #sendAccessRequestForm select {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-  #sendAccessRequestForm button {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-
-  /* Login & Signup */
-  .login-shell {
-    padding: 30px 4% 60px !important;
-    gap: 30px !important;
-  }
-  .login-intro h1 {
-    font-size: clamp(28px, 7vw, 42px) !important;
-    letter-spacing: -1.5px !important;
-  }
-  .login-card {
-    padding: 24px 18px !important;
-    border-radius: 22px !important;
-  }
-  .signup-card {
-    padding: 22px 16px !important;
-    border-radius: 22px !important;
-  }
+.dashboard-refill-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-/* ==========================================================================
-   Desktop & Large Screen UI Enhancements (>= 1001px)
-   ========================================================================== */
-@media (min-width: 1001px) {
-  .site-header,
-  .app-header {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    background: rgba(247, 243, 238, 0.96) !important;
-    backdrop-filter: blur(16px) !important;
-    border-bottom: 1px solid var(--line) !important;
-  }
-
-  .app-layout {
-    display: grid !important;
-    grid-template-columns: 260px minmax(0, 1fr) !important;
-    min-height: calc(100vh - 92px) !important;
-    width: 100% !important;
-    align-items: stretch !important;
-    overflow: visible !important;
-    background: var(--cream) !important;
-  }
-
-  .sidebar {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
-    position: sticky !important;
-    top: 92px !important;
-    height: calc(100vh - 92px) !important;
-    min-height: calc(100vh - 92px) !important;
-    max-height: calc(100vh - 92px) !important;
-    align-self: stretch !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    background: #eee8ef !important;
-    border-right: 1px solid var(--line) !important;
-    padding: 16px 12px !important;
-    z-index: 15 !important;
-    box-sizing: border-box !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: rgba(107, 77, 126, 0.25) transparent !important;
-  }
-
-  .sidebar::-webkit-scrollbar {
-    width: 4px !important;
-  }
-  .sidebar::-webkit-scrollbar-thumb {
-    background: rgba(107, 77, 126, 0.25) !important;
-    border-radius: 999px !important;
-  }
-  .sidebar::-webkit-scrollbar-thumb:hover {
-    background: rgba(107, 77, 126, 0.45) !important;
-  }
-
-  .patient-mini {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 3px !important;
-    padding: 6px 8px 12px !important;
-    margin-bottom: 8px !important;
-    border-bottom: 1px solid rgba(81, 66, 103, 0.12) !important;
-    flex-shrink: 0 !important;
-  }
-  .patient-mini .avatar {
-    width: 42px !important;
-    height: 42px !important;
-    margin-bottom: 4px !important;
-    border-radius: 12px !important;
-    font-size: 16px !important;
-    display: grid !important;
-    place-items: center !important;
-  }
-  .patient-mini strong {
-    font-size: 14.5px !important;
-    font-weight: 800 !important;
-    line-height: 1.25 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    color: #2b1c33 !important;
-    word-break: break-word !important;
-  }
-  .patient-mini small {
-    font-size: 11.5px !important;
-    color: var(--muted) !important;
-    line-height: 1.1 !important;
-    word-break: break-all !important;
-  }
-
-  .side-nav {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 3px !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 2px !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: rgba(107, 77, 126, 0.2) transparent !important;
-  }
-  .side-nav a {
-    display: flex !important;
-    gap: 10px !important;
-    align-items: center !important;
-    padding: 8px 12px !important;
-    border-radius: 10px !important;
-    font-size: 13.5px !important;
-    font-weight: 700 !important;
-    color: #645a6c !important;
-    line-height: 1.2 !important;
-    transition: all 0.18s ease !important;
-    white-space: nowrap !important;
-  }
-  .side-nav a.active {
-    background: #ffffff !important;
-    color: var(--plum) !important;
-    font-weight: 800 !important;
-    box-shadow: 0 2px 8px rgba(81, 66, 103, 0.08) !important;
-  }
-  .side-nav a:hover {
-    background: rgba(255, 255, 255, 0.75) !important;
-    color: var(--plum) !important;
-    transform: translateX(2px) !important;
-  }
-
-  .side-bottom {
-    margin-top: auto !important;
-    padding-top: 10px !important;
-    border-top: 1px solid rgba(81, 66, 103, 0.12) !important;
-    flex-shrink: 0 !important;
-    background: inherit !important;
-  }
-  .side-bottom a {
-    display: flex !important;
-    gap: 10px !important;
-    align-items: center !important;
-    padding: 7px 12px !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    color: #83778c !important;
-    border-radius: 10px !important;
-  }
-  .side-bottom a:hover {
-    background: #ffffff !important;
-    color: var(--plum) !important;
-  }
-
-  .app-main {
-    padding: 44px 4% 100px !important;
-    max-width: 1560px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    min-width: 0 !important;
-  }
-
-  .provider-hero {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    gap: 32px !important;
-    padding: 38px 44px !important;
-    border-radius: 28px !important;
-    margin: 16px 0 32px !important;
-    background: linear-gradient(135deg, #2b1c33 0%, #462c53 50%, #63476d 100%) !important;
-    color: #ffffff !important;
-    box-shadow: 0 16px 40px rgba(43, 28, 51, 0.15) !important;
-  }
-
-  .provider-hero h2 {
-    color: #ffffff !important;
-    font-size: 34px !important;
-    line-height: 1.15 !important;
-    letter-spacing: -1px !important;
-    margin: 8px 0 10px !important;
-  }
-
-  .provider-hero p {
-    color: #d6ccdc !important;
-    font-size: 16px !important;
-    line-height: 1.6 !important;
-    max-width: 680px !important;
-    margin: 0 !important;
-  }
-
-  .provider-stat {
-    border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
-    border-top: 0 !important;
-    padding-left: 32px !important;
-    padding-top: 0 !important;
-    width: auto !important;
-    align-items: center !important;
-    flex-shrink: 0 !important;
-  }
-
-  .provider-stat strong {
-    font-size: 52px !important;
-    line-height: 1 !important;
-    color: #ffffff !important;
-  }
-
-  .provider-stat span {
-    color: #d6ccdc !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    margin-top: 6px !important;
-  }
-
-  .profile-card,
-  .upload-card {
-    background: #ffffff !important;
-    border: 1px solid var(--line) !important;
-    border-radius: 26px !important;
-    padding: 34px 38px !important;
-    box-shadow: 0 10px 35px rgba(43, 32, 58, 0.05) !important;
-    margin-bottom: 30px !important;
-    color: var(--ink) !important;
-  }
-
-  .profile-card h2,
-  .profile-card h3,
-  .profile-card h4 {
-    color: var(--plum) !important;
-  }
-
-  .card-topline {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    font-size: 12px !important;
-    letter-spacing: 1.5px !important;
-    font-weight: 800 !important;
-    color: var(--muted) !important;
-    margin-bottom: 12px !important;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 20px !important;
-  }
-
-  .quick-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 20px !important;
-  }
-
-  .details-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 24px !important;
-  }
+.janaushadhi-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-/* Ultra-wide Displays (>= 1600px) */
-@media (min-width: 1600px) {
-  .app-layout {
-    grid-template-columns: 310px minmax(0, 1fr) !important;
-  }
-  .app-main {
-    padding: 50px 5% 120px !important;
-    max-width: 1700px !important;
-  }
-  .page-title h1 {
-    font-size: 58px !important;
-  }
+/* Mobile SaaS Bottom Navigation */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(255, 253, 250, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--line);
+  z-index: 100;
+  padding: 0 6px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 20px rgba(43, 32, 58, 0.08);
 }
 
-/* ==========================================================================
-   Emergency SOS 102 Call Button & Modal
-   ========================================================================== */
+.mobile-nav-items {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.mobile-nav-item,
+.mobile-bottom-nav > a.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  flex: 1;
+  text-align: center;
+}
+
+.mobile-nav-item span:first-child,
+.mobile-bottom-nav > a.nav-item .nav-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mobile-nav-item.active,
+.mobile-bottom-nav > a.nav-item.active {
+  color: var(--plum);
+  background: var(--lav);
+}
+
+/* Floating AI Action Button */
+.floating-ai-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: var(--plum);
+  color: #fff;
+  border-radius: 999px;
+  padding: 14px 22px;
+  font: 800 15px "Manrope", sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 35px rgba(81, 66, 103, 0.35);
+  z-index: 90;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.floating-ai-btn:hover {
+  transform: scale(1.05);
+  background: var(--plum-dark);
+}
+
+/* Emergency SOS 102 Call Button & Modal */
 .sos-btn {
   display: inline-flex !important;
   align-items: center !important;
@@ -1695,23 +768,13 @@ input, select, textarea, button {
 }
 
 @keyframes sosPulseGlow {
-  0%, 100% {
-    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
-  }
-  50% {
-    box-shadow: 0 4px 22px rgba(239, 68, 68, 0.85);
-  }
+  0%, 100% { box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45); }
+  50% { box-shadow: 0 4px 22px rgba(239, 68, 68, 0.85); }
 }
 
 @keyframes sosRingExpand {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1.18);
-    opacity: 0;
-  }
+  0% { transform: scale(0.95); opacity: 0.9; }
+  100% { transform: scale(1.18); opacity: 0; }
 }
 
 @keyframes sosIconShake {
@@ -1842,81 +905,894 @@ input, select, textarea, button {
   color: #0f172a;
 }
 
-/* Enforce single-line UI buttons and prevent wrapping */
-.hero-buttons {
+/* Horizontal Scrolling Filters & Tags */
+.filter-bar,
+.feeling-btns,
+.timeline-heat-strip,
+.chat-chips,
+.ingestion-tabs {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
-  gap: 12px !important;
-  margin: 30px 0 !important;
-  max-width: 100% !important;
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: none !important;
 }
 
-.hero-buttons::-webkit-scrollbar {
-  display: none !important;
-}
-
-.hero-buttons > * {
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-}
-
-.hero-buttons .primary-btn,
-.hero-buttons .secondary-btn,
-.hero-buttons .sos-hero-btn {
-  padding: 13px 18px !important;
-  font-size: 15px !important;
-  white-space: nowrap !important;
-}
-
-.header-actions,
-.app-header-right {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-.header-actions > *,
-.app-header-right > * {
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-}
-
-.location-btn {
-  white-space: nowrap !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  flex-shrink: 0 !important;
-}
-
-.filter-bar,
-.feeling-btns {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: center !important;
-  overflow-x: auto !important;
-  scrollbar-width: none !important;
-}
-
 .filter-bar::-webkit-scrollbar,
-.feeling-btns::-webkit-scrollbar {
+.feeling-btns::-webkit-scrollbar,
+.timeline-heat-strip::-webkit-scrollbar,
+.chat-chips::-webkit-scrollbar,
+.ingestion-tabs::-webkit-scrollbar {
   display: none !important;
 }
 
 .filter-bar > *,
-.feeling-btns > * {
+.feeling-btns > *,
+.timeline-heat-strip > *,
+.chat-chips > *,
+.ingestion-tabs > * {
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+}
+
+/* ==========================================================================
+   BREAKPOINT: Desktop & Large Displays (>= 1001px)
+   ========================================================================== */
+@media (min-width: 1001px) {
+  .site-header,
+  .app-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: rgba(247, 243, 238, 0.96) !important;
+    backdrop-filter: blur(16px) !important;
+    border-bottom: 1px solid var(--line) !important;
+  }
+
+  .app-layout {
+    display: grid !important;
+    grid-template-columns: 260px minmax(0, 1fr) !important;
+    min-height: calc(100vh - 92px) !important;
+    width: 100% !important;
+    align-items: stretch !important;
+    overflow: visible !important;
+    background: var(--cream) !important;
+  }
+
+  .sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 92px !important;
+    height: calc(100vh - 92px) !important;
+    min-height: calc(100vh - 92px) !important;
+    max-height: calc(100vh - 92px) !important;
+    align-self: stretch !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #eee8ef !important;
+    border-right: 1px solid var(--line) !important;
+    padding: 16px 12px !important;
+    z-index: 15 !important;
+    box-sizing: border-box !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(107, 77, 126, 0.25) transparent !important;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    width: 4px !important;
+  }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(107, 77, 126, 0.25) !important;
+    border-radius: 999px !important;
+  }
+
+  .patient-mini {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 3px !important;
+    padding: 6px 8px 12px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid rgba(81, 66, 103, 0.12) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .side-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 2px !important;
+    scrollbar-width: thin !important;
+  }
+
+  .side-nav a {
+    display: flex !important;
+    gap: 10px !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: #645a6c !important;
+    line-height: 1.2 !important;
+    transition: all 0.18s ease !important;
+    white-space: nowrap !important;
+  }
+
+  .side-nav a.active {
+    background: #ffffff !important;
+    color: var(--plum) !important;
+    font-weight: 800 !important;
+    box-shadow: 0 2px 8px rgba(81, 66, 103, 0.08) !important;
+  }
+
+  .side-nav a:hover {
+    background: rgba(255, 255, 255, 0.75) !important;
+    color: var(--plum) !important;
+    transform: translateX(2px) !important;
+  }
+
+  .side-bottom {
+    margin-top: auto !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(81, 66, 103, 0.12) !important;
+    flex-shrink: 0 !important;
+    background: inherit !important;
+  }
+
+  .app-main {
+    padding: 44px 4% 100px !important;
+    max-width: 1560px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 20px !important;
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 20px !important;
+  }
+
+  .details-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px !important;
+  }
+
+  .hero-buttons {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin: 30px 0 !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Ultrawide Displays (>= 1600px)
+   ========================================================================== */
+@media (min-width: 1600px) {
+  .app-layout {
+    grid-template-columns: 300px minmax(0, 1fr) !important;
+  }
+  .app-main {
+    padding: 50px 5% 120px !important;
+    max-width: 1720px !important;
+  }
+  .page-title h1 {
+    font-size: 56px !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Tablet & Compact Displays (<= 1200px)
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .hero {
+    gap: 40px !important;
+    padding: 70px 4.5% 60px !important;
+  }
+  .trust-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+  .security-section {
+    gap: 40px !important;
+    padding: 50px 5% !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Mobile & Tablet Off-Canvas Drawer (<= 1000px)
+   ========================================================================== */
+@media (max-width: 1000px) {
+  .hero {
+    grid-template-columns: 1fr !important;
+    gap: 36px !important;
+    padding: 50px 4% 50px !important;
+    text-align: left !important;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 6vw, 62px) !important;
+    letter-spacing: -2px !important;
+  }
+
+  .hero-text {
+    font-size: 18px !important;
+  }
+
+  .portal-grid,
+  .feature-strip,
+  .features-grid,
+  .features-columns-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 18px !important;
+  }
+
+  .security-section {
+    grid-template-columns: 1fr !important;
+    border-radius: 24px !important;
+    padding: 42px 5% !important;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    color: var(--plum);
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+  }
+
+  .mobile-menu-btn:hover {
+    background: var(--lav);
+  }
+
+  .mobile-drawer-close {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 14px 12px !important;
+    border-bottom: 1px solid rgba(81, 66, 103, 0.12);
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+
+  .app-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Slide-in Mobile Drawer */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 290px !important;
+    max-width: 86vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    z-index: 1000 !important;
+    background: #eee8ef !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.45) !important;
+    transform: translateX(-105%) !important;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 12px 10px 24px !important;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .app-main {
+    padding: 24px 4% calc(85px + env(safe-area-inset-bottom, 0px)) !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .mobile-bottom-nav {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .floating-ai-btn {
+    bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 18px !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+  }
+
+  .dashboard-grid,
+  .quick-grid,
+  .cabinet-grid,
+  .vitals-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .upload-card,
+  .login-shell {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+
+  .provider-hero {
+    flex-direction: column !important;
+    gap: 20px !important;
+    padding: 30px 24px !important;
+  }
+
+  .provider-stat {
+    border-left: 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding: 18px 0 0 !important;
+    width: 100% !important;
+    align-items: flex-start !important;
+  }
+
+  .companion-grid,
+  .vaidya-main-grid,
+  .vaidya-two-col-grid,
+  .kiosk-grid,
+  .scanner-main-grid,
+  .profile-arogya-grid,
+  .delegation-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Large Phones & Tablets (<= 800px)
+   ========================================================================== */
+@media (max-width: 800px) {
+  .site-header, .app-header {
+    height: auto !important;
+    min-height: 64px !important;
+    padding: 10px 4% !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .brand {
+    font-size: 20px !important;
+    margin-right: 0 !important;
+  }
+
+  .brand-logo {
+    height: 36px !important;
+    max-width: 140px !important;
+  }
+
+  .nav-links {
+    display: none !important;
+  }
+
+  .location-btn {
+    display: none !important;
+  }
+
+  .app-header-right,
+  .header-actions {
+    gap: 6px !important;
+    margin-left: auto !important;
+  }
+
+  .sos-btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    gap: 4px !important;
+  }
+
+  #languageSelect {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+    max-width: 85px !important;
+  }
+
+  .user-badge-link {
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+    max-width: 110px !important;
+  }
+
+  .user-name-text {
+    max-width: 65px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
+  }
+
+  .header-signout-btn {
+    padding: 5px 10px !important;
+    font-size: 11.5px !important;
+  }
+
+  .signin {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .page-title {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .page-title h1 {
+    font-size: clamp(28px, 6.5vw, 42px) !important;
+    letter-spacing: -1.5px !important;
+    line-height: 1.1 !important;
+    margin: 4px 0 !important;
+  }
+
+  .page-title p {
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+  }
+
+  .page-title .primary-btn,
+  .page-title .secondary-btn {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  .inventory-form-grid,
+  .vaidya-prescribe-grid,
+  .signup-section .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .signup-role-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-refill-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .dashboard-refill-banner .secondary-btn {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  .janaushadhi-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .janaushadhi-banner a {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Mobile Phones (<= 650px)
+   ========================================================================== */
+@media (max-width: 650px) {
+  body {
+    font-size: 16px !important;
+  }
+
+  .trust-strip,
+  .portal-grid,
+  .feature-strip,
+  .features-grid,
+  .features-columns-grid,
+  .security-features-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .app-main {
+    padding: 18px 4% calc(85px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .page-title h1 {
+    font-size: clamp(24px, 7.5vw, 34px) !important;
+    letter-spacing: -1px !important;
+  }
+
+  /* Grid Stack to 1 Column */
+  .dashboard-grid,
+  .quick-grid,
+  .vitals-grid,
+  .cabinet-grid,
+  .patient-result-grid,
+  .details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .summary-card {
+    min-height: auto !important;
+    padding: 18px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .summary-card > strong {
+    font-size: 26px !important;
+    margin: 6px 0 !important;
+  }
+
+  .quick-card {
+    padding: 14px !important;
+    grid-template-columns: 42px 1fr 16px !important;
+    gap: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .section-row {
+    margin: 28px 0 12px !important;
+  }
+
+  .section-row h2 {
+    font-size: 22px !important;
+  }
+
+  /* Records Stack */
+  .record-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 16px !important;
+    gap: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .record-icon {
+    margin-right: 0 !important;
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 17px !important;
+    border-radius: 13px !important;
+  }
+
+  .record-main {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .record-main h3 {
+    font-size: 18px !important;
+  }
+
+  .record-main > div:last-child {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .record-main .view-btn,
+  .record-main button {
+    flex: 1 !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Medications Routine */
+  .todo-summary {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    padding: 18px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .todo-progress {
+    width: 100% !important;
+  }
+
+  .med-task {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 14px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .med-task > div {
+    flex: 1 1 170px !important;
+    min-width: 0 !important;
+  }
+
+  .med-task > b {
+    width: 100% !important;
+    padding-left: 36px !important;
+    margin-top: 2px !important;
+  }
+
+  /* Health Timeline */
+  .feeling-box {
+    padding: 18px 14px !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .feeling-btns {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .feeling-btn {
+    width: 100% !important;
+    padding: 12px 14px !important;
+    font-size: 14px !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .timeline-card {
+    flex-direction: column !important;
+    padding: 16px 14px !important;
+    gap: 12px !important;
+    border-radius: 18px !important;
+    width: 100% !important;
+  }
+
+  .timeline-date {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Medicine Cabinet */
+  .refill-alert-box {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    padding: 18px 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .refill-actions {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .refill-actions a {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 11px !important;
+  }
+
+  .cabinet-meta {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  /* Kiosk View */
+  .kiosk-symptom-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .kiosk-patient-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Profile & Arogya Vitals */
+  .profile-vitals-meta {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Medi-AI Chat Container */
+  .chat-container {
+    height: calc(100vh - 200px) !important;
+    min-height: 400px !important;
+    border-radius: 20px !important;
+  }
+
+  .chat-header {
+    padding: 12px 16px !important;
+  }
+
+  .chat-messages {
+    padding: 14px !important;
+    gap: 12px !important;
+  }
+
+  .chat-bubble {
+    max-width: 90% !important;
+    font-size: 14.5px !important;
+    padding: 11px 14px !important;
+  }
+
+  /* Consent & Delegation */
+  .delegation-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    padding: 18px 16px !important;
+  }
+
+  .delegation-card > div:last-child {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .delegation-card button {
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  /* Hero action buttons */
+  .hero-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin: 24px 0 !important;
+  }
+
+  .hero-buttons .primary-btn,
+  .hero-buttons .secondary-btn,
+  .hero-buttons .sos-hero-btn {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* Login & Signup */
+  .login-shell {
+    padding: 24px 4% 50px !important;
+    gap: 24px !important;
+  }
+
+  .login-card,
+  .signup-card,
+  .profile-card,
+  .upload-card {
+    padding: 22px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Modals */
+  .modal-card {
+    padding: 24px 16px !important;
+    border-radius: 20px !important;
+    max-width: 95vw !important;
+    width: 100% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  footer {
+    flex-direction: column !important;
+    gap: 14px !important;
+    text-align: center !important;
+    padding: 20px 4% calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Compact Mobile Devices (<= 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .site-header, .app-header {
+    padding: 8px 3% !important;
+    min-height: 58px !important;
+    gap: 6px !important;
+  }
+
+  .brand-logo {
+    height: 30px !important;
+    max-width: 110px !important;
+  }
+
+  .sos-btn {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+  }
+
+  #languageSelect {
+    max-width: 70px !important;
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+  }
+
+  .user-name-text {
+    display: none !important;
+  }
+
+  .user-badge-link {
+    padding: 5px 8px !important;
+    font-size: 11.5px !important;
+  }
+
+  .header-signout-btn {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .cabinet-meta {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .kiosk-symptom-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT: Ultra-Compact Screens (<= 360px)
+   ========================================================================== */
+@media (max-width: 360px) {
+  .app-main {
+    padding: 14px 2.5% calc(85px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .page-title h1 {
+    font-size: 22px !important;
+  }
+
+  .brand-logo {
+    height: 26px !important;
+    max-width: 95px !important;
+  }
+
+  .sos-btn {
+    font-size: 10.5px !important;
+    padding: 4px 6px !important;
+  }
+
+  .sos-icon {
+    display: none !important;
+  }
 }
 
 /* Multi-language RTL Support */

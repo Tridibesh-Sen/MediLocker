@@ -749,7 +749,7 @@ export function Kiosk() {
               </div>
 
               {/* Patient Basic Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '12px', marginBottom: '16px' }}>
+              <div className="kiosk-patient-info-grid" style={{ marginBottom: '16px' }}>
                 <label>
                   <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
                     Patient Name * (मरीज का नाम)

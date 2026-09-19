@@ -206,7 +206,7 @@ export function Inventory() {
           </div>
 
           <form onSubmit={handleAddSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <div className="inventory-form-grid">
               <label>
                 <span style={{ fontSize: '13px', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Medicine Brand Name *</span>
                 <input

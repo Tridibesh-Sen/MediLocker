@@ -118,9 +118,39 @@
     }));
     updateLoginRole(role);
     const f=document.getElementById('loginForm');
+    const tabPass=document.getElementById('tabLoginPassword');
+    const tabUnit=document.getElementById('tabLoginUnit');
+    const passField=document.getElementById('passwordField');
+    const unitField=document.getElementById('unitField');
+
+    let currentAuthMode = 'password';
+
+    if (tabPass && tabUnit) {
+      tabPass.addEventListener('click', () => {
+        currentAuthMode = 'password';
+        tabPass.style.background = '#2b1836';
+        tabPass.style.color = '#fff';
+        tabUnit.style.background = 'transparent';
+        tabUnit.style.color = '#6b5a7d';
+        if (passField) passField.classList.remove('hidden');
+        if (unitField) unitField.classList.add('hidden');
+      });
+
+      tabUnit.addEventListener('click', () => {
+        currentAuthMode = 'unitId';
+        tabUnit.style.background = '#2b1836';
+        tabUnit.style.color = '#fff';
+        tabPass.style.background = 'transparent';
+        tabPass.style.color = '#6b5a7d';
+        if (unitField) unitField.classList.remove('hidden');
+        if (passField) passField.classList.add('hidden');
+      });
+    }
+
     // Auto-prefill last generated credentials if available
     const lastUnit = localStorage.getItem('medilockerLastCreatedUnit');
     const unitEl = document.getElementById('unitId');
+    const passEl = document.getElementById('loginPassword');
     const emailEl = f.querySelector('input[type=email]');
     if (unitEl && lastUnit && !unitEl.value) {
       unitEl.value = lastUnit;
@@ -137,24 +167,33 @@
 
       const email=emailEl?emailEl.value.trim().toLowerCase():'';
       const unit=unitEl?unitEl.value.trim().toUpperCase():'';
+      const password=passEl?passEl.value.trim():'';
       const targetRole=window.currentRole||'patient';
 
-      if(!email||!unit){
-        alert('Both registered Email address and Unique Unit ID are required to sign in.');
+      if(!email){
+        alert('Registered Email address is required to sign in.');
         return;
       }
 
-      if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Authenticating with Supabase…';}
+      if(!unit && !password){
+        alert('Please enter either your Password or your Unique Unit ID (ML-XXXX-XXXX) to sign in.');
+        return;
+      }
+
+      if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Authenticating…';}
 
       try{
+        const loginPayload = {
+          email: email,
+          role: targetRole.toUpperCase()
+        };
+        if (password) loginPayload.password = password;
+        if (unit) loginPayload.medilockerId = unit;
+
         const res=await fetch(apiUrl('/api/v1/auth/login'),{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            email:email,
-            medilockerId:unit,
-            role:targetRole.toUpperCase()
-          })
+          body:JSON.stringify(loginPayload)
         });
 
         const data=await res.json();
@@ -167,9 +206,9 @@
           return;
         }
 
-        alert(data.error||data.message||'Authentication failed. Invalid email or Unit ID.');
+        alert(data.error||data.message||'Authentication failed. Please verify your email and password or Unit ID.');
       }catch(err){
-        alert(err.message||'Server error: Unable to connect to Supabase database. Please check your backend connection.');
+        alert(err.message||'Server error: Unable to connect to backend server. Please check your network connection.');
       }finally{
         if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=oldBtnText;}
       }
@@ -411,7 +450,7 @@
         localStorage.setItem('medilockerLastCreatedRole',role);
         
         document.getElementById('generatedUnit').textContent=unit;
-        document.getElementById('unitMessage').innerHTML=`Your <strong>${esc(role)}</strong> account has been created in <strong>Supabase</strong>. Welcome email with your permanent Unit ID has been dispatched. Save <strong>${esc(unit)}</strong> and use it with <strong>${esc(payload.email)}</strong> to sign in.`;
+        document.getElementById('unitMessage').innerHTML=`Your <strong>${esc(role)}</strong> account has been registered successfully!<br><br>Your permanent Unit ID is: <strong style="color:var(--plum);font-size:18px;">${esc(unit)}</strong><br><br>During login, you can provide either your <strong>Password</strong> OR this <strong>Unit ID</strong> along with your registered email (<strong>${esc(payload.email)}</strong>). Welcome email with your credentials has been dispatched.`;
         document.getElementById('unitModal')?.classList.remove('hidden');
       }catch(err){
         alert('Server is down or unreachable. Could not connect to Supabase database. Please check your backend connection.');

@@ -73,6 +73,7 @@ export function Medications() {
       {/* Jan Aushadhi Generic Medicine Cost Saver Banner */}
       {todos.length > 0 && (
         <div
+          className="janaushadhi-banner"
           style={{
             background: 'linear-gradient(135deg, #064e3b, #047857)',
             color: '#fff',

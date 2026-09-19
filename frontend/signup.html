@@ -143,7 +143,16 @@
 <p class="signup-prompt">Already registered? <a href="login.html">Sign in with Email + Unit ID →</a></p>
 </form></section></main>
 
-<div class="modal hidden" id="unitModal"><div class="modal-card"><button class="modal-close" id="closeUnit" type="button">×</button><div class="success-icon">✓</div><h2>Account created.</h2><p id="unitMessage">Save your Unit ID. It is required together with your registered email for login.</p><div class="generated-id" id="generatedUnit"></div><button class="primary-btn full" id="goLogin" type="button">Continue to login →</button></div></div>
+<div class="modal hidden" id="unitModal">
+  <div class="modal-card" style="text-align:center;max-width:520px;">
+    <button class="modal-close" id="closeUnit" type="button">×</button>
+    <div class="success-icon">✓</div>
+    <h2>Account Created Successfully!</h2>
+    <div class="generated-id" id="generatedUnit" style="font-size:26px;letter-spacing:2px;margin:16px 0;"></div>
+    <p id="unitMessage" style="font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 24px;text-align:left;background:#fdfaff;border:1px solid #f0e6f6;padding:14px;border-radius:12px;"></p>
+    <button class="primary-btn full" id="goLogin" type="button">Continue to Login →</button>
+  </div>
+</div>
 
 <!-- Camera Capture Modal -->
 <div class="modal hidden" id="cameraModal">

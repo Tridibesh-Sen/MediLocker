@@ -39,6 +39,18 @@ export interface RecordUploadedEmailParams {
   recordId: string;
 }
 
+export interface PatientRecordUploadedEmailParams {
+  patientEmail: string;
+  patientName: string;
+  patientUnitId: string;
+  documentType: string;
+  originalFilename: string;
+  doctorName?: string;
+  clinicName?: string;
+  diagnoses?: string[];
+  medicationsCount?: number;
+}
+
 export interface AppointmentBookedEmailParams {
   recipientEmail: string;
   recipientName: string;
@@ -577,6 +589,65 @@ class MailerService {
     return this.dispatch(
       doctorEmail,
       `[MediLocker] New ${documentType} uploaded by patient ${patientName}`,
+      html
+    );
+  }
+
+  async sendPatientRecordUploadedEmail(params: PatientRecordUploadedEmailParams): Promise<boolean> {
+    const {
+      patientEmail,
+      patientName,
+      patientUnitId,
+      documentType,
+      originalFilename,
+      doctorName,
+      clinicName,
+      diagnoses,
+      medicationsCount,
+    } = params;
+
+    const docTypePretty =
+      documentType === 'PRESCRIPTION'
+        ? 'Medical Prescription'
+        : documentType === 'REPORT'
+        ? 'Diagnostic Lab Report'
+        : documentType === 'SCAN'
+        ? 'Clinical Scan / Radiology'
+        : 'Health Document';
+
+    const bodyHtml = `
+      <p>Dear <strong>${patientName}</strong>,</p>
+      <p>Your <strong>${docTypePretty}</strong> has been securely stored in your sovereign MediLocker vault and analyzed by <strong>Medi-AI</strong>.</p>
+
+      <div style="background:#f5edf9;border-left:4px solid #6f3289;border-radius:8px;padding:18px;margin:20px 0;">
+        <p style="margin:0 0 6px;font-size:14px;"><strong>Document:</strong> ${originalFilename}</p>
+        <p style="margin:0 0 6px;font-size:14px;"><strong>Category:</strong> ${docTypePretty}</p>
+        <p style="margin:0 0 6px;font-size:14px;"><strong>Your Unit ID:</strong> <code style="color:#6f3289;font-weight:700;">${patientUnitId}</code></p>
+        ${doctorName ? `<p style="margin:0 0 6px;font-size:14px;"><strong>Prescribing Doctor:</strong> Dr. ${doctorName} ${clinicName ? `(${clinicName})` : ''}</p>` : ''}
+        ${diagnoses && diagnoses.length > 0 ? `<p style="margin:0 0 6px;font-size:14px;"><strong>Diagnoses Detected:</strong> ${diagnoses.join(', ')}</p>` : ''}
+        ${medicationsCount && medicationsCount > 0 ? `<p style="margin:0;font-size:14px;"><strong>Medications Extracted:</strong> ${medicationsCount} medication(s) added to your Daily To-Do Routine</p>` : ''}
+      </div>
+
+      <p style="font-size:14px;color:#554c60;">
+        You can view this document, track your active medications in your daily To-Do checklist, and share time-bound access with doctors anytime.
+      </p>
+    `;
+
+    const html = renderBaseLayout({
+      headerTagline: 'Sovereign Medical Vault Ingestion',
+      badgeText: 'RECORD VAULTED & INDEXED',
+      badgeBg: '#ede9fe',
+      badgeColor: '#6d28d9',
+      heading: `${docTypePretty} Stored in Your MediLocker`,
+      bodyHtml,
+      ctaText: 'Open Medical Vault',
+      ctaUrl: 'https://medi-locker-sih.vercel.app',
+      extraFooter: `Unit ID: ${patientUnitId} · Encrypted Storage`,
+    });
+
+    return this.dispatch(
+      patientEmail,
+      `[MediLocker] ${docTypePretty} uploaded successfully (${originalFilename})`,
       html
     );
   }
