@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
+import { useAuth } from '../../context/AuthContext';
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+  const role = user?.role || 'PATIENT';
 
   return (
     <>
@@ -43,29 +46,85 @@ export function AppLayout() {
             <span>Home</span>
           </NavLink>
 
-          <NavLink
-            to="/records"
-            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-          >
-            <span>▤</span>
-            <span>Records</span>
-          </NavLink>
+          {role === 'DOCTOR' ? (
+            <>
+              <NavLink
+                to="/companion"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>✦</span>
+                <span>Medi-AI</span>
+              </NavLink>
 
-          <NavLink
-            to="/timeline"
-            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-          >
-            <span>⏳</span>
-            <span>Timeline</span>
-          </NavLink>
+              <NavLink
+                to="/kiosk"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>🏥</span>
+                <span>Kiosk</span>
+              </NavLink>
 
-          <NavLink
-            to="/companion"
-            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-          >
-            <span>✦</span>
-            <span>Medi-AI</span>
-          </NavLink>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>◉</span>
+                <span>Profile</span>
+              </NavLink>
+            </>
+          ) : role === 'HOSPITAL' ? (
+            <>
+              <NavLink
+                to="/hospital-doctors"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>👨‍⚕️</span>
+                <span>Doctors</span>
+              </NavLink>
+
+              <NavLink
+                to="/kiosk"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>🏥</span>
+                <span>Kiosk</span>
+              </NavLink>
+
+              <NavLink
+                to="/scanner"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>🚨</span>
+                <span>Scanner</span>
+              </NavLink>
+            </>
+          ) : (
+            <>
+              <NavLink
+                to="/records"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>▤</span>
+                <span>Records</span>
+              </NavLink>
+
+              <NavLink
+                to="/timeline"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>⏳</span>
+                <span>Timeline</span>
+              </NavLink>
+
+              <NavLink
+                to="/companion"
+                className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <span>✦</span>
+                <span>Medi-AI</span>
+              </NavLink>
+            </>
+          )}
 
           <button
             type="button"

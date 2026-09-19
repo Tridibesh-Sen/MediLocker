@@ -2,9 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { DoctorDashboard } from '../components/dashboard/DoctorDashboard';
 
 export function Dashboard() {
   const { user } = useAuth();
+  
+  // If authenticated user is a DOCTOR, render dedicated Doctor Dashboard
+  if (user?.role === 'DOCTOR') {
+    return <DoctorDashboard user={user} />;
+  }
+
   const [todos, setTodos] = useState([]);
   const [recordsCount, setRecordsCount] = useState(0);
   const [inventoryCount, setInventoryCount] = useState(0);
