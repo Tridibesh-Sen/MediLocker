@@ -44,9 +44,31 @@ export function errorHandler(
     return;
   }
 
+  // Handle Prisma P2002 Unique Constraint Violation
+  if ((err as any)?.code === 'P2002') {
+    const target = Array.isArray((err as any)?.meta?.target)
+      ? (err as any).meta.target.join(', ')
+      : (err as any)?.meta?.target || 'field';
+    res.status(409).json({
+      success: false,
+      error: `An account or record with this ${target} is already registered. Please sign in or use unique credentials.`,
+    });
+    return;
+  }
+
+  // Handle Prisma P2025 Record Not Found
+  if ((err as any)?.code === 'P2025') {
+    res.status(404).json({
+      success: false,
+      error: 'The requested resource was not found.',
+    });
+    return;
+  }
+
+  const isDev = process.env.NODE_ENV === 'development';
   res.status(500).json({
     success: false,
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    error: isDev ? (err.message || 'Internal server error') : (err.message?.includes('database') || err.message?.includes('prisma') ? 'Database operation failed. Please try again.' : err.message || 'Internal server error'),
+    message: err.message,
   });
 }
